@@ -1,0 +1,8 @@
+
+
+@template.layout.main(content = @`
+
+    <h1>hello</h1>
+
+`)
+

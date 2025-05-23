@@ -1,0 +1,80 @@
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+    encoding:
+      charset: utf-8
+      enabled: true
+
+spring:
+  application:
+    name: s3Manager
+  config:
+    import:
+      - secret.yml
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  profiles:
+    default: dev
+
+gg:
+  jte:
+    templateLocation: src/main/jte
+    templateSuffix: .kte
+
+
+---
+
+server:
+  config:
+    activate:
+      on-profile:
+        - dev
+
+spring:
+  config:
+    activate:
+      on-profile:
+        - dev
+
+  devtools:
+    livereload:
+      enabled: true
+    restart:
+      poll-interval: 5s
+      enabled: true
+
+gg:
+  jte:
+    developmentMode: true
+
+logging:
+  level:
+    root: info
+    org:
+      springframework:
+        security:
+          oauth2: debug
+---
+
+server:
+  config:
+    activate:
+      on-profile:
+        - prod
+  port: 8082
+
+spring:
+  config:
+    activate:
+      on-profile:
+        - prod
+
+gg:
+  jte:
+    usePrecompiledTemplates: true
+    developmentMode: false
