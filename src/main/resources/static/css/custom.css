@@ -44,3 +44,33 @@
 .htmx-request.spinner-indicator {
     display: inline;
 }
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator { display: flex; }
+.htmx-request.htmx-indicator { display: flex; }
+
+.file-row:hover {
+    background-color: oklch(var(--b2));
+}
+
+.folder-tree-item {
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+}
+
+.folder-tree-item:hover {
+    background-color: oklch(var(--b2));
+}
+
+.folder-tree-item.active {
+    background-color: oklch(var(--p) / 0.1);
+    color: oklch(var(--p));
+    font-weight: 600;
+}
+
+/* 드래그 앤 드롭 스타일 */
+.drag-over {
+    border: 2px dashed #3b82f6 !important;
+    background-color: #eff6ff !important;
+}

@@ -1,0 +1,18 @@
+<!-- Object Info Modal -->
+<dialog id="object-info-modal" class="modal">
+    <div class="modal-box">
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        </form>
+        <h3 class="font-bold text-lg mb-4">객체 정보</h3>
+        <div id="object-info-content">
+            <!-- 객체 정보가 여기에 동적으로 로드됩니다 -->
+            <div class="flex justify-center items-center py-8">
+                <div class="loading loading-spinner loading-lg"></div>
+            </div>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>

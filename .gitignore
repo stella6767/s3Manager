@@ -27,6 +27,7 @@ out/
 !**/src/test/**/out/
 secret.yml
 node_modules/
+src/test/resources/
 
 ### NetBeans ###
 /nbproject/private/

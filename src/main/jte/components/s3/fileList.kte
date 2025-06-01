@@ -1,0 +1,166 @@
+@import freeapp.me.s3manager.web.dto.*
+
+@param objects: List<S3ObjectInfo>
+@param currentPath: String
+@param breadcrumbs: List<BreadcrumbItem>
+@param success: String? = null
+@param error: String? = null
+
+<div data-current-path="${currentPath}">
+    @if(success != null)
+        <div class="alert alert-success mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>${success}</span>
+        </div>
+    @endif
+
+    @if(error != null)
+        <div class="alert alert-error mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>${error}</span>
+        </div>
+    @endif
+
+    <!-- 파일 테이블 -->
+    <div class="overflow-x-auto">
+        <table class="table table-zebra">
+            <thead>
+            <tr>
+                <th>
+                    <label>
+                        <input type="checkbox" class="checkbox" onchange="toggleAllCheckboxes(this)" />
+                    </label>
+                </th>
+                <th class="cursor-pointer hover:bg-base-200">
+                    이름
+                    <svg class="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
+                    </svg>
+                </th>
+                <th class="cursor-pointer hover:bg-base-200">
+                    유형
+                    <svg class="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </th>
+                <th class="cursor-pointer hover:bg-base-200">
+                    마지막 수정
+                    <svg class="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </th>
+                <th class="cursor-pointer hover:bg-base-200">
+                    크기
+                    <svg class="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </th>
+                <th class="cursor-pointer hover:bg-base-200">
+                    스토리지 클래스
+                    <svg class="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </th>
+                <th>액션</th>
+            </tr>
+            </thead>
+            <tbody>
+            @if(objects.isEmpty())
+                <tr>
+                    <td colspan="7" class="text-center text-gray-500 py-8">
+                        <div class="flex flex-col items-center">
+                            <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                            </svg>
+                            <p class="text-lg font-medium text-gray-400">폴더가 비어있습니다</p>
+                            <p class="text-sm text-gray-400 mt-1">파일을 업로드하거나 폴더를 생성해보세요</p>
+                        </div>
+                    </td>
+                </tr>
+            @else
+                @for(obj in objects)
+                    <tr class="file-row hover">
+                        <th>
+                            <label>
+                                <input type="checkbox" class="checkbox file-checkbox" />
+                            </label>
+                        </th>
+                        <td>
+                            @if(!obj.isDirectory)
+                                <div class="dropdown dropdown-end">
+                                    <div tabindex="0" role="button" class="btn btn-ghost btn-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01"></path>
+                                        </svg>
+                                    </div>
+                                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-32 p-2 shadow">
+                                        <li>
+                                            <a href="/s3/download?key=${obj.key}" target="_blank" class="flex items-center gap-2">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-4-4m4 4l4-4m-6 0h8"></path>
+                                                </svg>
+                                                다운로드
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="#" class="text-error flex items-center gap-2" onclick="confirmDelete('${obj.key}', '${obj.name}')">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                                삭제
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            @else
+                                <div class="dropdown dropdown-end">
+                                    <div tabindex="0" role="button" class="btn btn-ghost btn-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01"></path>
+                                        </svg>
+                                    </div>
+                                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[1] w-32 p-2 shadow">
+                                        <li>
+                                            <a href="#" class="text-error flex items-center gap-2" onclick="confirmDelete('${obj.key}', '${obj.name}')">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                                폴더 삭제
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            @endif
+                        </td>
+                    </tr>
+                @endfor
+            @endif
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 페이지네이션 -->
+    <div class="flex justify-between items-center mt-4">
+        <div class="text-sm text-base-content/70">
+            1 - ${objects.size} of ${objects.size} items
+        </div>
+        <div class="join">
+            <button class="join-item btn btn-sm" disabled>«</button>
+            <button class="join-item btn btn-sm btn-active">1</button>
+            <button class="join-item btn btn-sm" disabled>»</button>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-base-content/70">항목 표시:</span>
+            <select class="select select-bordered select-sm w-20">
+                <option selected>8</option>
+                <option>16</option>
+                <option>32</option>
+                <option>64</option>
+            </select>
+        </div>
+    </div>
+</div>

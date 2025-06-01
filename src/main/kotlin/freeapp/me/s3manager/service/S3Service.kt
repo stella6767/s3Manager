@@ -5,17 +5,22 @@ import freeapp.me.s3manager.util.customDelimiter
 import freeapp.me.s3manager.util.generateRandomNumberString
 import freeapp.me.s3manager.web.dto.*
 import mu.KotlinLogging
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.core.sync.RequestBody
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
 import software.amazon.awssdk.services.s3.presigner.model.UploadPartPresignRequest
 import java.io.File
 import java.time.Duration
+import java.time.Instant
+import java.util.function.Consumer
 
 
 @Service
@@ -24,7 +29,7 @@ class S3Service(
     private val s3PreSigner: S3Presigner
 ) {
 
-    private val log = KotlinLogging.logger {  }
+    private val log = KotlinLogging.logger { }
 
 
     @Value("\${s3.bucket}")
@@ -192,6 +197,217 @@ class S3Service(
     }
 
 
+    fun connectToS3() {
+
+
+    }
+
+
+    fun createS3Client(
+        region: String,
+        accessKey: String,
+        secretKey: String
+    ): S3Client {
+
+        return S3Client.builder()
+            .region(Region.of(region))
+            .credentialsProvider(
+                StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(accessKey, secretKey)
+                )
+            )
+            .build()
+    }
+
+
+    fun testConnection(
+        region: String,
+        bucket: String,
+        accessKey: String,
+        secretKey: String
+    ): Boolean {
+        try {
+            val s3Client =
+                createS3Client(region, accessKey, secretKey)
+
+            val headBucketRequest = HeadBucketRequest.builder()
+                .bucket(bucket)
+                .build()
+
+            s3Client.headBucket(headBucketRequest)
+            return true
+        } catch (e: Exception) {
+            return false
+        }
+    }
+
+    fun listObjects(config: S3Config, prefix: String): List<S3ObjectInfo> {
+
+        val s3Client =
+            createS3Client(config.region, config.accessKey, config.secretKey)
+
+        val listRequest = ListObjectsV2Request.builder()
+            .bucket(config.bucket)
+            .prefix(prefix)
+            .delimiter("/")
+            .build()
+
+        val response = s3Client.listObjectsV2(listRequest)
+        val objects = mutableListOf<S3ObjectInfo>()
+
+        // 폴더 추가
+        response.commonPrefixes().forEach { prefixObj ->
+            val folderName = prefixObj.prefix().removePrefix(prefix).removeSuffix("/")
+            if (folderName.isNotEmpty()) {
+                objects.add(
+                    S3ObjectInfo(
+                        key = prefixObj.prefix(),
+                        name = folderName,
+                        isDirectory = true,
+                        size = 0L,
+                        lastModified = Instant.now(),
+                        extension = ""
+                    )
+                )
+            }
+        }
+
+        // 파일 추가
+        response.contents().forEach { obj ->
+            if (obj.key() != prefix && !obj.key().endsWith("/")) {
+                val fileName = obj.key().removePrefix(prefix)
+                val extension = fileName.substringAfterLast(".", "")
+                objects.add(
+                    S3ObjectInfo(
+                        key = obj.key(),
+                        name = fileName,
+                        isDirectory = false,
+                        size = obj.size(),
+                        lastModified = obj.lastModified(),
+                        extension = extension
+                    )
+                )
+            }
+        }
+
+        return objects.sortedWith(compareBy<S3ObjectInfo> { !it.isDirectory }.thenBy { it.name })
+    }
+
+    fun uploadFile(config: S3Config, key: String, file: MultipartFile) {
+        val s3Client =
+            createS3Client(config.region, config.accessKey, config.secretKey)
+        val putRequest = PutObjectRequest.builder()
+            .bucket(config.bucket)
+            .key(key)
+            .contentType(file.contentType)
+            .build()
+
+        s3Client.putObject(putRequest, RequestBody.fromBytes(file.bytes))
+    }
+
+    fun createFolder(config: S3Config, key: String) {
+                val s3Client =
+            createS3Client(config.region, config.accessKey, config.secretKey)
+        val putRequest = PutObjectRequest.builder()
+            .bucket(config.bucket)
+            .key(key)
+            .build()
+
+        s3Client.putObject(putRequest, RequestBody.fromBytes(ByteArray(0)))
+    }
+
+    fun deleteObject(config: S3Config, key: String) {
+                val s3Client =
+            createS3Client(config.region, config.accessKey, config.secretKey)
+        val deleteRequest = DeleteObjectRequest.builder()
+            .bucket(config.bucket)
+            .key(key)
+            .build()
+
+        s3Client.deleteObject(deleteRequest)
+    }
+
+    fun generatePresignedUrl(config: S3Config, key: String): String {
+        val presigner = S3Presigner.builder()
+            .region(Region.of(config.region))
+            .credentialsProvider(
+                StaticCredentialsProvider.create(
+                    AwsBasicCredentials.create(config.accessKey, config.secretKey)
+                )
+            )
+            .build()
+
+        val getObjectRequest = GetObjectRequest.builder()
+            .bucket(config.bucket)
+            .key(key)
+            .build()
+
+        val presignRequest = GetObjectPresignRequest.builder()
+            .signatureDuration(Duration.ofMinutes(15))
+            .getObjectRequest(getObjectRequest)
+            .build()
+
+        val presignedRequest = presigner.presignGetObject(presignRequest)
+        return presignedRequest.url().toString()
+    }
+
+    fun buildBreadcrumbs(prefix: String): List<BreadcrumbItem> {
+        if (prefix.isEmpty()) return emptyList()
+
+        val parts = prefix.removeSuffix("/").split("/")
+        val breadcrumbs = mutableListOf<BreadcrumbItem>()
+        var currentPath = ""
+
+        parts.forEach { part ->
+            currentPath += "$part/"
+            breadcrumbs.add(BreadcrumbItem(part, currentPath))
+        }
+
+        return breadcrumbs
+    }
+
+
+
+    fun buildFolderTree(config: S3Config): List<FolderTreeNode> {
+        val s3Client = createS3Client(config.region, config.accessKey, config.secretKey)
+        val listRequest = ListObjectsV2Request.builder()
+            .bucket(config.bucket)
+            .build()
+
+        val response = s3Client.listObjectsV2(listRequest)
+        val folderPaths = response.contents()
+            .map { it.key() }
+            .filter { it.contains("/") }
+            .map { it.substringBeforeLast("/") }
+            .distinct()
+            .sorted()
+
+        val root = mutableListOf<FolderTreeNode>()
+        val nodeMap = mutableMapOf<String, FolderTreeNode>()
+
+        folderPaths.forEach { path ->
+            val parts = path.split("/")
+            var currentPath = ""
+            var currentList = root
+
+            parts.forEach { part ->
+                val fullPath = if (currentPath.isEmpty()) part else "$currentPath/$part"
+                currentPath = fullPath
+
+                val existingNode = nodeMap[fullPath]
+                if (existingNode == null) {
+                    val newNode = FolderTreeNode(part, "$fullPath/")
+                    nodeMap[fullPath] = newNode
+                    currentList.add(newNode)
+                    currentList = newNode.children
+                } else {
+                    currentList = existingNode.children
+                }
+            }
+        }
+
+        return root
+    }
 
 
 }

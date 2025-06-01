@@ -1,13 +1,11 @@
-
+@param isSignUp:Boolean
 
 @template.layout.main(content = @`
 
     <main id="main-container"
           class="min-h-screen flex flex-col items-center">
-        @template.components.s3.connectionForm()
+        @template.components.auth.signBox(isSignUp = isSignUp)
     </main>
-
-
 
 `)
 

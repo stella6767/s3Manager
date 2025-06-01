@@ -106,7 +106,7 @@ class SecurityConfig(
             }    // 로그아웃은 기본설정으로 (/logout으로 인증해제)
             .sessionManagement {
                 it.maximumSessions(1)
-                    .expiredUrl("/login?expired")
+                    .expiredUrl("/auth/login?expired")
                     .maxSessionsPreventsLogin(false)
             }
             .exceptionHandling {

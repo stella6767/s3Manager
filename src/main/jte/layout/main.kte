@@ -13,12 +13,18 @@
     <meta content="stella6767" name="author">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
 </head>
-<body id="body" hx-indicator=".loading-bar">
+
+<body id="body" hx-indicator=".loading-bar" class="flex flex-col min-h-screen">
 <div class="loading-bar"></div>
-
 <div id="error-alert-container"></div>
+@template.layout.navbar()
 
-${content}
+<div id="content-body" class="py-3 flex-grow">
+    ${content}
+</div>
 
+
+
+@template.layout.footer()
 </body>
 </html>

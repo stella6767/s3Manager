@@ -47,9 +47,6 @@ dependencies {
     implementation("software.amazon.awssdk:s3-transfer-manager")
     implementation("software.amazon.awssdk.crt:aws-crt:0.38.1")
 
-
-
-
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")

@@ -2,14 +2,17 @@ package freeapp.me.s3manager.util
 
 import java.security.SecureRandom
 import java.text.Normalizer
+import java.time.LocalDateTime
 import java.util.*
 
 
 private const val VERIFY_CODE_INT_LENGTH = 6
 private const val VERIFY_TOKEN_BYTES = 20
 
-
 fun generateRandomNumberString(): String {
+
+    LocalDateTime.now().year.toString()
+
     return (1..10)
         .map { (0..9).random() }
         .joinToString("")

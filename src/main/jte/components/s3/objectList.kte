@@ -1,0 +1,166 @@
+@import freeapp.me.s3manager.web.dto.*
+
+@param objects: List<S3ObjectInfo>
+@param currentPath: String
+@param totalCount: Long
+@param currentPage: Int
+@param totalPages: Int
+
+<!-- Object Count Info -->
+<div class="flex justify-between items-center mb-4">
+    <div class="text-sm text-gray-600">
+        총 ${totalCount}개 객체 (${currentPage}/${totalPages} 페이지)
+    </div>
+    <div class="flex items-center gap-2">
+        <label class="text-sm">페이지당 표시:</label>
+        <select class="select select-bordered select-sm" onchange="changePageSize(this.value)">
+            <option value="20" selected>20개</option>
+            <option value="50">50개</option>
+            <option value="100">100개</option>
+        </select>
+    </div>
+</div>
+
+<!-- Objects Table -->
+<div class="overflow-x-auto">
+    <table class="table table-zebra w-full">
+        <thead>
+        <tr>
+            <th class="w-16">타입</th>
+            <th>이름</th>
+            <th class="w-32">크기</th>
+            <th class="w-48">수정일</th>
+        </tr>
+        </thead>
+        <tbody>
+        @if(objects.isEmpty())
+            <tr>
+                <td colspan="4" class="text-center py-8">
+                    <div class="flex flex-col items-center">
+                        <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        <p class="text-lg font-medium text-gray-400">객체가 없습니다</p>
+                        <p class="text-sm text-gray-400 mt-1">이 경로에는 파일이나 폴더가 없습니다</p>
+                    </div>
+                </td>
+            </tr>
+        @else
+            @for(obj in objects)
+                <tr class="hover:bg-base-200 cursor-pointer"
+                    onclick="handleObjectClick('${obj.key}', ${obj.isDirectory})">
+                    <td>
+                        <span class="text-2xl">${obj.getFileIcon()}</span>
+                    </td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium">${obj.name}</span>
+                            @if(!obj.isDirectory && obj.extension.isNotEmpty())
+                                <span class="badge badge-ghost badge-sm">${obj.extension}</span>
+                            @endif
+                        </div>
+                    </td>
+                    <td>
+                        @if(!obj.isDirectory)
+                            <span class="text-sm">${obj.getFormattedSize()}</span>
+                        @else
+                            <span class="text-gray-400">-</span>
+                        @endif
+                    </td>
+                    <td>
+                        <span class="text-sm">${obj.getFormattedDate()}</span>
+                    </td>
+                </tr>
+            @endfor
+        @endif
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+@if(totalPages > 1)
+    <div class="flex justify-center mt-6">
+        <div class="join">
+            @if(currentPage > 1)
+                <button class="join-item btn btn-sm"
+                        hx-get="/s3/list"
+                        hx-vals='{"prefix": "${currentPath}", "page": "${currentPage - 1}"}'
+                        hx-target="#objects-container"
+                        hx-swap="innerHTML">
+                    «
+                </button>
+            @else
+                <button class="join-item btn btn-sm btn-disabled">«</button>
+            @endif
+
+            @for(i in maxOf(1, currentPage - 2)..minOf(totalPages, currentPage + 2))
+                @if(i == currentPage)
+                    <button class="join-item btn btn-sm btn-active">${i}</button>
+                @else
+                    <button class="join-item btn btn-sm"
+                            hx-get="/s3/list"
+                            hx-vals='{"prefix": "${currentPath}", "page": "${i}"}'
+                            hx-target="#objects-container"
+                            hx-swap="innerHTML">
+                        ${i}
+                    </button>
+                @endif
+            @endfor
+
+            @if(currentPage < totalPages)
+                <button class="join-item btn btn-sm"
+                        hx-get="/s3/list"
+                        hx-vals='{"prefix": "${currentPath}", "page": "${currentPage + 1}"}'
+                        hx-target="#objects-container"
+                        hx-swap="innerHTML">
+                    »
+                </button>
+            @else
+                <button class="join-item btn btn-sm btn-disabled">»</button>
+            @endif
+        </div>
+    </div>
+@endif
+
+<script>
+    function handleObjectClick(key, isDirectory) {
+        if (isDirectory) {
+            // 폴더 클릭시 해당 폴더로 이동
+            htmx.ajax('GET', '/s3/list', {
+                values: {
+                    prefix: key,
+                    page: 1
+                },
+                target: '#main-content',
+                swap: 'innerHTML'
+            });
+        } else {
+            // 파일 클릭시 객체 정보 표시 (또는 다운로드)
+            showObjectInfo(key);
+        }
+    }
+
+    function showObjectInfo(key) {
+        // 모달이나 사이드 패널로 객체 정보 표시
+        htmx.ajax('GET', '/s3/object-info', {
+            values: {key: key},
+            target: '#object-info-modal',
+            swap: 'innerHTML'
+        });
+        document.getElementById('object-info-modal').showModal();
+    }
+
+    function changePageSize(size) {
+        const currentPath = '${currentPath}';
+        htmx.ajax('GET', '/s3/list', {
+            values: {
+                prefix: currentPath,
+                page: 1,
+                size: size
+            },
+            target: '#objects-container',
+            swap: 'innerHTML'
+        });
+    }
+</script>
