@@ -1,5 +1,7 @@
 package freeapp.me.s3manager.web.dto
 
+import freeapp.me.s3manager.entity.S3Key
+import freeapp.me.s3manager.entity.User
 import java.lang.Math.log
 import java.lang.Math.pow
 import java.time.Instant
@@ -76,7 +78,18 @@ data class S3ConnectionRequestDto (
     val bucket: String,
     val accessKey: String,
     val secretKey: String,
-)
+) {
+    fun toEntity(user: User): S3Key {
+
+        return S3Key(
+            user = user,
+            region = this.region,
+            bucket = this.bucket,
+            accessKey = this.accessKey,
+            secretKey = this.secretKey
+        )
+    }
+}
 
 data class S3Config(
     val region: String,

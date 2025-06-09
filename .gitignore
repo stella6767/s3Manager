@@ -29,6 +29,10 @@ secret.yml
 node_modules/
 src/test/resources/
 
+## custom
+deploy-simple.sh
+
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
