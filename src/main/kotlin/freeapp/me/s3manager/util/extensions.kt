@@ -59,21 +59,6 @@ inline fun <reified T : Any> EntityManager.getResult(
 }
 
 
-fun EntityManager.getCountByQuery(
-    countQuery: String,
-    render: JpqlRendered
-): Long {
-
-    val count = this.createQuery(countQuery, Long::class.java).apply {
-        render.params.forEach { name, value ->
-            setParameter(name, value)
-        }
-    }.singleResult
-
-    return count
-}
-
-
 
 
 inline fun <reified T : Any> EntityManager.getResultWithPagination(
@@ -93,6 +78,21 @@ inline fun <reified T : Any> EntityManager.getResultWithPagination(
 
     return fetch.resultList
 }
+
+fun EntityManager.getCountByQuery(
+    countQuery: String,
+    render: JpqlRendered
+): Long {
+
+    val count = this.createQuery(countQuery, Long::class.java).apply {
+        render.params.forEach { name, value ->
+            setParameter(name, value)
+        }
+    }.singleResult
+
+    return count
+}
+
 
 
 

@@ -40,13 +40,7 @@
                             AWS S3 연결 설정
                         </h2>
 
-                        <form
-                                action="/s3/connect"
-                                <%--                          hx-post="/s3/connect"--%>
-                                <%--                          hx-target="#main-content"--%>
-                                <%--                          hx-swap="innerHTML"--%>
-                                <%--                          hx-indicator="#loading-indicator"--%>
-                        >
+                        <form id="s3-connect-form">
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="form-control">
@@ -118,7 +112,12 @@
                             <div class="card-actions justify-end mt-4">
 
                                 @if(isLoggedIn())
-                                    <button type="submit" class="btn btn-primary">
+                                    <button type="submit" class="btn btn-primary"
+                                            hx-post="/s3/connect"
+                                            hx-target="#main-content"
+                                            hx-swap="innerHTML"
+                                            hx-include="#s3-connect-form *"
+                                    >
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M13 10V3L4 14h7v7l9-11h-7z"></path>

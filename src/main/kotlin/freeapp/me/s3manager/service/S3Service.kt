@@ -41,16 +41,6 @@ class S3Service(
 
     private val s3Utilities = s3Client.utilities()
 
-
-    fun saveS3Key(
-        user: User,
-        s3ConnectionRequestDto: S3ConnectionRequestDto
-    ): S3Key {
-        val s3Key =
-            s3ConnectionRequestDto.toEntity(user)
-        return s3KeyRepository.save(s3Key)
-    }
-
     fun testConnection(
         connectReq: S3ConnectionRequestDto
     ) {
@@ -65,6 +55,19 @@ class S3Service(
     }
 
 
+    @Transactional
+    fun saveS3Key(
+        user: User,
+        s3ConnectionRequestDto: S3ConnectionRequestDto
+    ): S3Key {
+        val s3Key =
+            s3ConnectionRequestDto.toEntity(user)
+        return s3KeyRepository.save(s3Key)
+    }
+
+
+
+    @Transactional
     fun saveS3Objects(
         s3key: S3Key,
     ) {

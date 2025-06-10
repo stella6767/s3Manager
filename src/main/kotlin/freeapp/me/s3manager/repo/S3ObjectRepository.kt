@@ -44,7 +44,7 @@ class S3ObjectCustomRepositoryImpl(
                 entity(S3Object::class),
             ).from(
                 entity(S3Object::class),
-                leftFetchJoin(S3Object::s3key),
+                fetchJoin(S3Object::s3key),
             ).where(
                 path(S3Object::s3key).equal(s3key)
             ).orderBy(
@@ -57,7 +57,9 @@ class S3ObjectCustomRepositoryImpl(
                 count(path(S3Object::id)),
             ).from(
                 entity(S3Object::class),
-                leftFetchJoin(S3Object::s3key),
+                fetchJoin(S3Object::s3key),
+            ).where(
+                path(S3Object::s3key).equal(s3key)
             ).orderBy(
                 path(S3Object::id).desc(),
             )
@@ -83,7 +85,7 @@ class S3ObjectCustomRepositoryImpl(
         val sql = """
                 INSERT INTO
                 s3manager.s3_object
-                (s3_key_id, key, name,  is_directory, size, last_modified, extension, created_at, updated_at)
+                (s3_key_id, object_key, name,  is_directory, size, last_modified, extension, created_at, updated_at)
                 VALUES
                 ( ?, ?, ?, ?, ?, ?, ?, ?, ? )
             """.trimIndent()
@@ -108,7 +110,6 @@ class S3ObjectCustomRepositoryImpl(
                 ps.setTimestamp(8, Timestamp.valueOf(argument.createdAt))
                 ps.setTimestamp(9, Timestamp.valueOf(argument.updatedAt))
             }
-
 
             return batchUpdate
 
