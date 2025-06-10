@@ -18,6 +18,7 @@ class IndexController(
         model: Model,
         @AuthenticationPrincipal principal: UserPrincipal?,
     ): String {
+
         if (principal != null) {
             s3Service.findS3KeyByUser(principal.user)?.let {
                 model.addAttribute("s3Key", S3keyInfo.fromEntity(it))

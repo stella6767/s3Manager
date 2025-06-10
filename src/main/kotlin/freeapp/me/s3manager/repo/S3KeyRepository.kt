@@ -36,7 +36,8 @@ class S3KeyCustomRepositoryImpl(
                 leftFetchJoin(S3Key::user)
             ).where(
                 and(
-                    path(S3Key::user).equal(user)
+                    path(S3Key::user).equal(user),
+                    path(S3Key::deletedAt).isNull(),
                 )
             ).orderBy(
                 path(S3Key::id).desc()

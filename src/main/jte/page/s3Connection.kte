@@ -13,18 +13,6 @@
                 <div class="navbar-start">
                     <h1 class="text-2xl font-bold text-primary">S3 Connect</h1>
                 </div>
-                <div class="navbar-end">
-                    <button id="disconnect-btn" class="btn btn-outline btn-sm" style="display: none;"
-                            hx-post="/s3/disconnect"
-                            hx-target="#main-content"
-                            hx-swap="innerHTML">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                        </svg>
-                        연결 해제
-                    </button>
-                </div>
             </div>
 
             <!-- Main Content Area -->
@@ -44,16 +32,28 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="form-control">
-                                    <label class="label">
-                                        <span class="label-text font-medium">Region</span>
-                                    </label>
-                                    <select name="region" class="select select-bordered" required>
-                                        <option value="us-east-1">US East (N. Virginia)</option>
-                                        <option value="us-west-2">US West (Oregon)</option>
-                                        <option value="eu-west-1">Europe (Ireland)</option>
-                                        <option value="ap-northeast-1">Asia Pacific (Tokyo)</option>
-                                        <option value="ap-northeast-2" selected>Asia Pacific (Seoul)</option>
-                                        <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                                    <label class="label"><span class="label-text font-medium">Region</span></label>
+                                    <select name="region" class="select select-bordered" required
+                                            disabled="${s3Key != null}">
+                                        <option value="us-east-1" selected="${s3Key?.region == "us-east-1"}">US East (N.
+                                            Virginia)
+                                        </option>
+                                        <option value="us-west-2" selected="${s3Key?.region == "us-west-2"}">US West
+                                            (Oregon)
+                                        </option>
+                                        <option value="eu-west-1" selected="${s3Key?.region == "eu-west-1"}">Europe
+                                            (Ireland)
+                                        </option>
+                                        <option value="ap-northeast-1" selected="${s3Key?.region == "ap-northeast-1"}">
+                                            Asia Pacific (Tokyo)
+                                        </option>
+                                        <option value="ap-northeast-2"
+                                                selected="${s3Key?.region == "ap-northeast-2" || s3Key == null}">Asia
+                                            Pacific (Seoul)
+                                        </option>
+                                        <option value="ap-southeast-1" selected="${s3Key?.region == "ap-southeast-1"}">
+                                            Asia Pacific (Singapore)
+                                        </option>
                                     </select>
                                 </div>
 
@@ -62,14 +62,10 @@
                                         <span class="label-text font-medium">Bucket Name</span>
                                     </label>
 
-                                    @if(s3Key != null)
-                                        <div name="bucket" value="${s3Key.bucket}"
-                                             class="input input-bordered" required/>
-                                    @else
-                                        <input type="text" name="bucket" placeholder="my-bucket-name"
-                                               class="input input-bordered" required/>
-                                    @endif
-
+                                    <input type="text" name="bucket" placeholder="my-bucket-name"
+                                           class="input input-bordered" required
+                                           value="${s3Key?.bucket ?: ""}"
+                                           disabled="${s3Key != null}"/>
 
                                 </div>
 
@@ -77,16 +73,10 @@
                                     <label class="label">
                                         <span class="label-text font-medium">Access Key ID</span>
                                     </label>
-                                    @if(s3Key != null)
-                                        <div name="accessKey" placeholder="AKIA..." class="input input-bordered">
-                                            ••••••••
-                                        </div>
-                                    @else
-                                        <input type="text" name="accessKey" placeholder="AKIA..."
-                                               class="input input-bordered"
-                                               required/>
-                                    @endif
-
+                                    <input type="text" name="accessKey" placeholder="AKIA..."
+                                           class="input input-bordered" required
+                                           value="${s3Key?.let { "••••••••" } ?: ""}"
+                                           disabled="${s3Key != null}"/>
                                 </div>
 
                                 <div class="form-control">
@@ -94,46 +84,56 @@
                                         <span class="label-text font-medium">Secret Access Key</span>
                                     </label>
 
-
-                                    @if(s3Key != null)
-                                        <div name="secretKey" class="input input-bordered">
-                                            ••••••••
-                                        </div>
-                                    @else
-                                        <input type="password" name="secretKey" placeholder="••••••••"
-                                               class="input input-bordered" required/>
-                                    @endif
-
-
+                                    <input type="password" name="secretKey" placeholder="••••••••"
+                                           class="input input-bordered" required
+                                           value="${s3Key?.let { "••••••••" } ?: ""}"
+                                           disabled="${s3Key != null}"/>
                                 </div>
                             </div>
 
 
                             <div class="card-actions justify-end mt-4">
 
-                                @if(isLoggedIn())
-                                    <button type="submit" class="btn btn-primary"
-                                            hx-post="/s3/connect"
-                                            hx-target="#main-content"
-                                            hx-swap="innerHTML"
-                                            hx-include="#s3-connect-form *"
+                                @if(s3Key != null)
+
+                                    <button class="btn btn-outline btn-error"
+                                            hx-put="/s3/disconnect"
                                     >
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                                         </svg>
-                                        연결하기
+                                        연결 해제
                                     </button>
                                 @else
-                                    <div class="tooltip" data-tip="require login">
-                                        <button type="submit" class="btn btn-primary" disabled="disabled">
+
+                                    @if(isLoggedIn())
+                                        <button type="submit" class="btn btn-primary"
+                                                hx-post="/s3/connect"
+                                                hx-target="#main-container"
+                                                hx-swap="innerHTML"
+                                                hx-include="#s3-connect-form *"
+                                        >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                       d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                                             </svg>
                                             연결하기
                                         </button>
-                                    </div>
+                                    @else
+                                        <div class="tooltip" data-tip="require login">
+                                            <button type="submit" class="btn btn-primary" disabled="disabled">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                     viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          stroke-width="2"
+                                                          d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                                </svg>
+                                                연결하기
+                                            </button>
+                                        </div>
+                                    @endif
+
                                 @endif
 
                             </div>
@@ -142,21 +142,10 @@
                 </div>
             </div>
 
-            <!-- Loading Indicator -->
-            <div id="loading-indicator" class="htmx-indicator flex justify-center items-center py-12">
-                <div class="loading loading-spinner loading-lg text-primary"></div>
-                <span class="ml-3 text-lg">처리 중...</span>
-            </div>
+
         </div>
 
-        <!-- Hidden Upload Form -->
-        <form id="upload-form" style="display: none;" enctype="multipart/form-data">
-            <input type="file" id="file-input" multiple
-                   hx-post="/s3/upload"
-                   hx-target="#file-list-content"
-                   hx-swap="innerHTML"
-                   hx-indicator="#loading-indicator">
-        </form>
+
     </div>
 
 

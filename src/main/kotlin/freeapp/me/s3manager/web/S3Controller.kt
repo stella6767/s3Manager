@@ -4,6 +4,7 @@ import freeapp.me.s3manager.config.UserPrincipal
 import freeapp.me.s3manager.service.S3Service
 import freeapp.me.s3manager.web.dto.*
 import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxRedirectView
+import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxRefreshView
 import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxRequest
 import io.github.wimdeblauwe.htmx.spring.boot.mvc.HxRequest
 import jakarta.persistence.EntityNotFoundException
@@ -42,10 +43,14 @@ class S3Controller(
         return HtmxRedirectView("/s3/browser")
     }
 
-    @PostMapping("/disconnect")
-    fun disconnect(session: HttpSession): String {
-        session.removeAttribute("s3Config")
-        return "components/s3/connectionForm"
+
+    @HxRequest
+    @PutMapping("/disconnect")
+    fun disconnect(
+        @AuthenticationPrincipal principal: UserPrincipal,
+    ): HtmxRefreshView {
+        s3Service.disconnectS3KeyByUser(principal.user)
+        return HtmxRefreshView()
     }
 
 

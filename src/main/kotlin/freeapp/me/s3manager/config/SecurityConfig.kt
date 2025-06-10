@@ -62,7 +62,9 @@ class SecurityConfig(
         return WebSecurityCustomizer { web: WebSecurity ->
             val arrays = arrayOf(
                 AntPathRequestMatcher("/resources/*"),
-                AntPathRequestMatcher("/static/*"), AntPathRequestMatcher("/img/*"),
+                AntPathRequestMatcher("/static/*"),
+                AntPathRequestMatcher("/img/*"),
+                AntPathRequestMatcher("/css/*"),
                 AntPathRequestMatcher("/js/*")
             )
             web.ignoring()
@@ -84,10 +86,9 @@ class SecurityConfig(
         http
             .authorizeHttpRequests { authorizeHttpRequests ->
                 authorizeHttpRequests
-                    //.requestMatchers(*arrayOf("/v1")).permitAll()
+                    .requestMatchers(*arrayOf("/", "/logout", "/auth/login","/auth/sign-up")).permitAll()
                     //.requestMatchers("/v1/admin/**").hasAnyRole(User.Role.ADMIN.name)
-                    //.anyRequest().authenticated()
-                    .anyRequest().permitAll()
+                    .anyRequest().authenticated()
             }
             .oauth2Login { oauth2 ->
                 oauth2

@@ -66,7 +66,6 @@ class S3Service(
     }
 
 
-
     @Transactional
     fun saveS3Objects(
         s3key: S3Key,
@@ -108,6 +107,16 @@ class S3Service(
             s3KeyRepository.findKeyByUser(user)
 
         return s3Key
+    }
+
+
+    @Transactional
+    fun disconnectS3KeyByUser(user: User) {
+
+        val s3Key =
+            s3KeyRepository.findKeyByUser(user) ?: throw EntityNotFoundException("s3key not found")
+
+        s3Key.disconnect()
     }
 
 
