@@ -3,16 +3,17 @@ package freeapp.me.s3manager.web
 import freeapp.me.s3manager.config.UserPrincipal
 import freeapp.me.s3manager.service.S3Service
 import freeapp.me.s3manager.web.dto.*
+import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxRedirectView
 import io.github.wimdeblauwe.htmx.spring.boot.mvc.HxRequest
+import jakarta.persistence.EntityNotFoundException
 import jakarta.servlet.http.HttpSession
+import jakarta.validation.Valid
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
-import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.*
-import org.springframework.web.multipart.MultipartFile
 
 
 @RequestMapping("/s3")
@@ -21,26 +22,23 @@ class S3Controller(
     private val s3Service: S3Service,
 ) {
 
-    @GetMapping("")
-    fun index(): String {
-        return "page/index"
-    }
 
+    @HxRequest
     @PostMapping("/connect")
     fun connect(
         @AuthenticationPrincipal principal: UserPrincipal,
-        s3ConnectionRequestDto: S3ConnectionRequestDto,
-        session: HttpSession,
+        @Valid s3ConnectionRequestDto: S3ConnectionRequestDto,
         model: Model
-    ): String {
+    ): HtmxRedirectView {
 
         s3Service.testConnection(s3ConnectionRequestDto)
-        s3Service.saveS3Key(principal.user, s3ConnectionRequestDto)
 
-        // 첫 페이지 로드
-        //return listObjects("", 1, 20, session, model)
+        val s3Key =
+            s3Service.saveS3Key(principal.user, s3ConnectionRequestDto)
 
-        TODO()
+        s3Service.saveS3Objects(s3Key)
+
+        return HtmxRedirectView("/s3/browser")
     }
 
     @PostMapping("/disconnect")
@@ -48,6 +46,32 @@ class S3Controller(
         session.removeAttribute("s3Config")
         return "components/s3/connectionForm"
     }
+
+
+    @GetMapping("/browser")
+    fun s3Browser(
+        model: Model,
+        @RequestParam(defaultValue = "") prefix: String,
+        @PageableDefault(size = 10) pageable: Pageable,
+        @AuthenticationPrincipal principal: UserPrincipal,
+    ): String {
+
+        val s3Key =
+            s3Service.findS3KeyByUser(user = principal.user) ?: throw EntityNotFoundException("s3Key not found")
+
+        val objects = s3Service.getObjectsByS3Key(s3Key, pageable)
+
+        val breadcrumbs =
+            s3Service.buildBreadcrumbs(prefix)
+
+        model.addAttribute("bucket", s3Key.bucket)
+        model.addAttribute("objects", objects)
+        model.addAttribute("currentPath", prefix)
+        model.addAttribute("breadcrumbs", breadcrumbs)
+
+        return "page/s3Browser"
+    }
+
 
 
 //    @HxRequest

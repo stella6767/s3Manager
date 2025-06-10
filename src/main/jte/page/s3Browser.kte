@@ -1,0 +1,16 @@
+@import freeapp.me.s3manager.web.dto.*
+@import org.springframework.data.domain.Page
+
+@param bucket: String
+@param objects: Page<S3ObjectInfo>
+@param currentPath: String
+@param breadcrumbs: List<BreadcrumbItem>
+
+
+@template.layout.main(content = @`
+    <main id="main-container"
+          class="min-h-screen flex flex-col items-center">
+        @template.components.s3.s3List(bucket = bucket, objects = objects, currentPath = currentPath, breadcrumbs = breadcrumbs)
+    </main>
+
+`)

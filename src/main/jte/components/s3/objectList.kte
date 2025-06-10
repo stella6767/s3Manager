@@ -1,15 +1,14 @@
 @import freeapp.me.s3manager.web.dto.*
+@import org.springframework.data.domain.Page
 
-@param objects: List<S3ObjectInfo>
+@param objects: Page<S3ObjectInfo>
 @param currentPath: String
-@param totalCount: Long
-@param currentPage: Int
-@param totalPages: Int
+
 
 <!-- Object Count Info -->
 <div class="flex justify-between items-center mb-4">
     <div class="text-sm text-gray-600">
-        총 ${totalCount}개 객체 (${currentPage}/${totalPages} 페이지)
+        총 ${objects.totalElements}개 객체 (${objects.number + 1}/${objects.totalPages} 페이지)
     </div>
     <div class="flex items-center gap-2">
         <label class="text-sm">페이지당 표시:</label>
@@ -33,7 +32,7 @@
         </tr>
         </thead>
         <tbody>
-        @if(objects.isEmpty())
+        @if(objects.isEmpty)
             <tr>
                 <td colspan="4" class="text-center py-8">
                     <div class="flex flex-col items-center">
@@ -79,49 +78,49 @@
 </div>
 
 <!-- Pagination -->
-@if(totalPages > 1)
-    <div class="flex justify-center mt-6">
-        <div class="join">
-            @if(currentPage > 1)
-                <button class="join-item btn btn-sm"
-                        hx-get="/s3/list"
-                        hx-vals='{"prefix": "${currentPath}", "page": "${currentPage - 1}"}'
-                        hx-target="#objects-container"
-                        hx-swap="innerHTML">
-                    «
-                </button>
-            @else
-                <button class="join-item btn btn-sm btn-disabled">«</button>
-            @endif
+<%--@if(totalPages > 1)--%>
+<%--    <div class="flex justify-center mt-6">--%>
+<%--        <div class="join">--%>
+<%--            @if(currentPage > 1)--%>
+<%--                <button class="join-item btn btn-sm"--%>
+<%--                        hx-get="/s3/list"--%>
+<%--                        hx-vals='{"prefix": "${currentPath}", "page": "${currentPage - 1}"}'--%>
+<%--                        hx-target="#objects-container"--%>
+<%--                        hx-swap="innerHTML">--%>
+<%--                    «--%>
+<%--                </button>--%>
+<%--            @else--%>
+<%--                <button class="join-item btn btn-sm btn-disabled">«</button>--%>
+<%--            @endif--%>
 
-            @for(i in maxOf(1, currentPage - 2)..minOf(totalPages, currentPage + 2))
-                @if(i == currentPage)
-                    <button class="join-item btn btn-sm btn-active">${i}</button>
-                @else
-                    <button class="join-item btn btn-sm"
-                            hx-get="/s3/list"
-                            hx-vals='{"prefix": "${currentPath}", "page": "${i}"}'
-                            hx-target="#objects-container"
-                            hx-swap="innerHTML">
-                        ${i}
-                    </button>
-                @endif
-            @endfor
+<%--            @for(i in maxOf(1, currentPage - 2)..minOf(totalPages, currentPage + 2))--%>
+<%--                @if(i == currentPage)--%>
+<%--                    <button class="join-item btn btn-sm btn-active">${i}</button>--%>
+<%--                @else--%>
+<%--                    <button class="join-item btn btn-sm"--%>
+<%--                            hx-get="/s3/list"--%>
+<%--                            hx-vals='{"prefix": "${currentPath}", "page": "${i}"}'--%>
+<%--                            hx-target="#objects-container"--%>
+<%--                            hx-swap="innerHTML">--%>
+<%--                        ${i}--%>
+<%--                    </button>--%>
+<%--                @endif--%>
+<%--            @endfor--%>
 
-            @if(currentPage < totalPages)
-                <button class="join-item btn btn-sm"
-                        hx-get="/s3/list"
-                        hx-vals='{"prefix": "${currentPath}", "page": "${currentPage + 1}"}'
-                        hx-target="#objects-container"
-                        hx-swap="innerHTML">
-                    »
-                </button>
-            @else
-                <button class="join-item btn btn-sm btn-disabled">»</button>
-            @endif
-        </div>
-    </div>
-@endif
+<%--            @if(currentPage < totalPages)--%>
+<%--                <button class="join-item btn btn-sm"--%>
+<%--                        hx-get="/s3/list"--%>
+<%--                        hx-vals='{"prefix": "${currentPath}", "page": "${currentPage + 1}"}'--%>
+<%--                        hx-target="#objects-container"--%>
+<%--                        hx-swap="innerHTML">--%>
+<%--                    »--%>
+<%--                </button>--%>
+<%--            @else--%>
+<%--                <button class="join-item btn btn-sm btn-disabled">»</button>--%>
+<%--            @endif--%>
+<%--        </div>--%>
+<%--    </div>--%>
+<%--@endif--%>
 
 <script>
     function handleObjectClick(key, isDirectory) {

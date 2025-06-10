@@ -18,7 +18,10 @@
             <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
             <ul class="menu bg-base-200 text-base-content min-h-full w-80 p-4">
                 <!-- Sidebar content here -->
-                <li><a>read me</a></li>
+                <li><a href="/">s3 connect</a></li>
+                @if(isLoggedIn())
+                    <li><a href="/s3/browser">s3 browser</a></li>
+                @endif
             </ul>
         </div>
     </div>

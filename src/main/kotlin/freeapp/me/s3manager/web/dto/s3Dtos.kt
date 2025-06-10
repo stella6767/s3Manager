@@ -1,10 +1,13 @@
 package freeapp.me.s3manager.web.dto
 
 import freeapp.me.s3manager.entity.S3Key
+import freeapp.me.s3manager.entity.S3Object
 import freeapp.me.s3manager.entity.User
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotEmpty
 import java.lang.Math.log
 import java.lang.Math.pow
-import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -41,7 +44,7 @@ data class S3UploadResultDto(
     val size: Long,
     val fileUrl: String,
     val isRequest: Boolean,
-    ) {
+) {
 
 
 }
@@ -73,10 +76,12 @@ data class PresignedURLDto(
 )
 
 
-data class S3ConnectionRequestDto (
+data class S3ConnectionRequestDto(
     val region: String,
     val bucket: String,
+    @field:NotBlank
     val accessKey: String,
+    @field:NotBlank
     val secretKey: String,
 ) {
     fun toEntity(user: User): S3Key {
@@ -91,13 +96,20 @@ data class S3ConnectionRequestDto (
     }
 }
 
-data class S3Config(
-    val region: String,
+data class S3keyInfo(
     val bucket: String,
-    val accessKey: String,
-    val secretKey: String
-)
+    val region: String,
+){
+    companion object {
+        fun fromEntity(s3Key: S3Key): S3keyInfo {
+            return S3keyInfo(
+                bucket = s3Key.bucket,
+                region = s3Key.region
+            )
+        }
+    }
 
+}
 
 
 data class S3ObjectInfo(
@@ -105,7 +117,7 @@ data class S3ObjectInfo(
     val name: String,
     val isDirectory: Boolean,
     val size: Long,
-    val lastModified: Instant,
+    val lastModified: LocalDateTime,
     val extension: String
 ) {
     fun getFormattedSize(): String {
@@ -136,6 +148,33 @@ data class S3ObjectInfo(
             else -> "📄"
         }
     }
+
+    fun toEntity(s3key: S3Key): S3Object {
+        return S3Object(
+            s3Key = s3key,
+            objectKey = key,
+            name = name,
+            isDirectory = isDirectory,
+            size = size,
+            lastModified = lastModified,
+            extension = extension,
+        )
+    }
+
+    companion object {
+        fun fromEntity(s3Object: S3Object): S3ObjectInfo {
+
+            return S3ObjectInfo(
+                key = s3Object.objectKey,
+                name = s3Object.name,
+                isDirectory = s3Object.isDirectory,
+                size = s3Object.size,
+                lastModified = s3Object.lastModified,
+                extension = s3Object.extension,
+            )
+        }
+    }
+
 }
 
 

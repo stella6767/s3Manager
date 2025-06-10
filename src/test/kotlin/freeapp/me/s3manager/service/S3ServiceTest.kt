@@ -1,7 +1,7 @@
 package freeapp.me.s3manager.service
 
 import freeapp.me.s3manager.repo.S3KeyRepository
-import freeapp.me.s3manager.web.dto.S3Config
+
 import freeapp.me.s3manager.web.dto.S3ConnectionRequestDto
 import org.junit.jupiter.api.Test
 
@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.TestConstructor
 import org.springframework.test.context.bean.override.mockito.MockitoBean
+import org.springframework.test.util.TestSocketUtils
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 
@@ -40,6 +41,8 @@ class S3ServiceTest(
 
     private val region = "ap-northeast-2"
 
+    private val bucket = "qr-data-store"
+
     @Test
     fun testConnection() {
 
@@ -51,6 +54,21 @@ class S3ServiceTest(
 
     }
 
+    @Test
+    fun getAllObjects() {
+
+        val client =
+            s3Service.createS3Client(accessKey, secretKey, region)
+
+        val allObjects =
+            s3Service.getAllObjects(client, bucket, "")
+
+        allObjects.forEach {
+            println(it)
+        }
+
+
+    }
 
 
 

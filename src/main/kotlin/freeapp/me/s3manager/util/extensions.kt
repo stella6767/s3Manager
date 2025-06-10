@@ -1,5 +1,6 @@
 package freeapp.me.s3manager.util
 
+import com.linecorp.kotlinjdsl.querymodel.jpql.select.SelectQuery
 import com.linecorp.kotlinjdsl.render.jpql.JpqlRendered
 import jakarta.persistence.EntityManager
 import jakarta.persistence.NoResultException
@@ -58,26 +59,21 @@ inline fun <reified T : Any> EntityManager.getResult(
 }
 
 
-
-
 fun EntityManager.getCountByQuery(
-    render: JpqlRendered,
+    countQuery: String,
+    render: JpqlRendered
 ): Long {
 
-    // 에러 발생 위험.
-    val countQuery = render.query.replace(
-        Regex("^select\\s+.+?from\\s+", RegexOption.IGNORE_CASE),
-        "select count(*) from "
-    )
-
-    val fetch = this.createQuery(countQuery, Long::class.java).apply {
+    val count = this.createQuery(countQuery, Long::class.java).apply {
         render.params.forEach { name, value ->
             setParameter(name, value)
         }
-    }
+    }.singleResult
 
-    return fetch.singleResult ?: 0L
+    return count
 }
+
+
 
 
 inline fun <reified T : Any> EntityManager.getResultWithPagination(
@@ -100,7 +96,7 @@ inline fun <reified T : Any> EntityManager.getResultWithPagination(
 
 
 
-fun LocalDateTime.toStringbyFormat(pattern: String = "yyyy-MM-dd HH:mm:ss"): String {
+fun LocalDateTime.toStringByFormat(pattern: String = "yyyy-MM-dd HH:mm:ss"): String {
     val dateTimeFormatter =
         DateTimeFormatter.ofPattern(pattern)
     return dateTimeFormatter.format(this).toString()

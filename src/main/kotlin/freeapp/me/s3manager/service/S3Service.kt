@@ -1,19 +1,25 @@
 package freeapp.me.s3manager.service
 
+import freeapp.me.s3manager.entity.S3Key
 import freeapp.me.s3manager.entity.User
 import freeapp.me.s3manager.repo.S3KeyRepository
+import freeapp.me.s3manager.repo.S3ObjectRepository
 import freeapp.me.s3manager.web.dto.*
+import jakarta.persistence.EntityNotFoundException
 import mu.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
-import java.time.Instant
-import kotlin.math.ceil
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 
 @Service
@@ -21,6 +27,7 @@ class S3Service(
     private val s3Client: S3Client,
     private val s3PreSigner: S3Presigner,
     private val s3KeyRepository: S3KeyRepository,
+    private val s3ObjectRepository: S3ObjectRepository,
 ) {
 
     private val log = KotlinLogging.logger { }
@@ -38,17 +45,18 @@ class S3Service(
     fun saveS3Key(
         user: User,
         s3ConnectionRequestDto: S3ConnectionRequestDto
-    ) {
+    ): S3Key {
         val s3Key =
             s3ConnectionRequestDto.toEntity(user)
-        s3KeyRepository.save(s3Key)
+        return s3KeyRepository.save(s3Key)
     }
 
     fun testConnection(
         connectReq: S3ConnectionRequestDto
     ) {
         val s3Client =
-            createS3Client(connectReq.accessKey,
+            createS3Client(
+                connectReq.accessKey,
                 connectReq.secretKey,
                 connectReq.region
             )
@@ -56,8 +64,52 @@ class S3Service(
         s3Client.close()
     }
 
+
+    fun saveS3Objects(
+        s3key: S3Key,
+    ) {
+
+        val s3Client =
+            createS3Client(
+                s3key.accessKey,
+                s3key.secretKey,
+                s3key.region
+            )
+
+        val allObjects =
+            getAllObjects(s3Client, s3key.bucket, "")
+
+        s3ObjectRepository
+            .bulkInsert(allObjects.map { it.toEntity(s3key) })
+
+    }
+
+
+    @Transactional(readOnly = true)
+    fun getObjectsByS3Key(
+        s3key: S3Key,
+        pageable: Pageable,
+    ): Page<S3ObjectInfo> {
+
+        val s3Objects =
+            s3ObjectRepository.findObjectsByS3Key(s3key, pageable)
+
+        return s3Objects.map { S3ObjectInfo.fromEntity(it) }
+    }
+
+
+    @Transactional(readOnly = true)
+    fun findS3KeyByUser(user: User): S3Key? {
+
+        val s3Key =
+            s3KeyRepository.findKeyByUser(user)
+
+        return s3Key
+    }
+
+
     fun listObjectsPaginated(
-        config: S3Config,
+        //config: S3Config,
         prefix: String,
         page: Int,
         pageSize: Int
@@ -208,34 +260,37 @@ class S3Service(
             .build()
     }
 
-    private fun getAllObjects(
+    fun getAllObjects(
         s3Client: S3Client,
         bucket: String,
         prefix: String
     ): List<S3ObjectInfo> {
 
-        val objects = mutableListOf<S3ObjectInfo>()
+        val objects =
+            mutableListOf<S3ObjectInfo>()
         var continuationToken: String? = null
 
         do {
+
             val request = ListObjectsV2Request.builder()
                 .bucket(bucket)
                 .prefix(prefix)
                 .delimiter("/") // 폴더 구조 유지
                 .maxKeys(1000)
                 .apply {
-                    if (continuationToken != null) {
-                        continuationToken(continuationToken)
-                    }
+                    continuationToken?.let { continuationToken(it) }
                 }
                 .build()
 
-            val response = s3Client.listObjectsV2(request)
+            val response =
+                s3Client.listObjectsV2(request)
 
             // 폴더들 (CommonPrefixes) 추가
             response.commonPrefixes().forEach { commonPrefix ->
-                val folderKey = commonPrefix.prefix()
-                val folderName = folderKey.removeSuffix("/").substringAfterLast("/")
+                val folderKey =
+                    commonPrefix.prefix()
+                val folderName =
+                    folderKey.removeSuffix("/").substringAfterLast("/")
 
                 if (folderName.isNotEmpty()) {
                     objects.add(
@@ -244,7 +299,7 @@ class S3Service(
                             name = folderName,
                             isDirectory = true,
                             size = 0L,
-                            lastModified = Instant.now(),
+                            lastModified = LocalDateTime.now(),
                             extension = ""
                         )
                     )
@@ -266,7 +321,7 @@ class S3Service(
                             name = name,
                             isDirectory = false,
                             size = s3Object.size(),
-                            lastModified = s3Object.lastModified(),
+                            lastModified = s3Object.lastModified().atZone(ZoneId.systemDefault()).toLocalDateTime(),
                             extension = extension
                         )
                     )
