@@ -61,7 +61,8 @@ class S3Controller(
         val s3Key =
             s3Service.findS3KeyByUser(user = principal.user) ?: throw EntityNotFoundException("s3Key not found")
 
-        val objects = s3Service.getObjectsByS3Key(s3Key, pageable)
+        val objects =
+            s3Service.getObjectsByS3Key(s3Key, pageable)
 
         val breadcrumbs =
             s3Service.buildBreadcrumbs(prefix)

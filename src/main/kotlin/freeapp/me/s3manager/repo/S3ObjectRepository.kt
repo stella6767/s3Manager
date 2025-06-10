@@ -57,11 +57,8 @@ class S3ObjectCustomRepositoryImpl(
                 count(path(S3Object::id)),
             ).from(
                 entity(S3Object::class),
-                fetchJoin(S3Object::s3key),
             ).where(
                 path(S3Object::s3key).equal(s3key)
-            ).orderBy(
-                path(S3Object::id).desc(),
             )
         }
 
@@ -72,7 +69,7 @@ class S3ObjectCustomRepositoryImpl(
             em.getResultWithPagination(render, S3Object::class.java, pageable)
 
         val count =
-            em.getCountByQuery(renderer.render(query = countQuery, ctx).query, render)
+            em.getCountByQuery(renderer.render(query = countQuery, ctx))
 
         return PageableExecutionUtils.getPage(
             fetch, pageable
