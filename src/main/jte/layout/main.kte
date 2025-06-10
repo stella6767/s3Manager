@@ -5,6 +5,8 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <script defer src="/js/htmx.min.js"></script>
+    <script defer src="/js/htmx-extensions.js"></script>
+    <script defer src="/js/response-targets.js"></script>
     <script defer src="/js/custom.js"></script>
     <link href="/css/custom.css" rel="stylesheet">
     <link href="/css/main.css" rel="stylesheet">
@@ -14,15 +16,20 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
 </head>
 
-<body id="body" hx-indicator=".loading-bar" class="flex flex-col min-h-screen">
+<body id="body" hx-ext="response-targets" hx-indicator=".loading-bar" class="flex flex-col min-h-screen">
 <div class="loading-bar"></div>
 <div id="error-alert-container"></div>
+
 @template.layout.navbar()
 
 <div id="content-body" class="py-3 flex-grow">
-    ${content}
-</div>
 
+    <main id="main-container"
+          class="min-h-screen flex flex-col items-center">
+        ${content}
+    </main>
+
+</div>
 
 
 @template.layout.footer()

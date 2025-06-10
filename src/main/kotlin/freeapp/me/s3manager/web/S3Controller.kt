@@ -4,6 +4,7 @@ import freeapp.me.s3manager.config.UserPrincipal
 import freeapp.me.s3manager.service.S3Service
 import freeapp.me.s3manager.web.dto.*
 import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxRedirectView
+import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxRequest
 import io.github.wimdeblauwe.htmx.spring.boot.mvc.HxRequest
 import jakarta.persistence.EntityNotFoundException
 import jakarta.servlet.http.HttpSession
@@ -51,6 +52,7 @@ class S3Controller(
     @GetMapping("/browser")
     fun s3Browser(
         model: Model,
+        htmxRequest: HtmxRequest,
         @RequestParam(defaultValue = "") prefix: String,
         @PageableDefault(size = 10) pageable: Pageable,
         @AuthenticationPrincipal principal: UserPrincipal,
@@ -69,9 +71,12 @@ class S3Controller(
         model.addAttribute("currentPath", prefix)
         model.addAttribute("breadcrumbs", breadcrumbs)
 
+        if (htmxRequest.isHtmxRequest) {
+            return "components/s3/s3List"
+        }
+
         return "page/s3Browser"
     }
-
 
 
 //    @HxRequest
@@ -177,8 +182,6 @@ class S3Controller(
 //        model.addAttribute("error", "세션이 만료되었습니다. 다시 연결해주세요.")
 //        return "components/s3/connectionForm"
 //    }
-
-
 
 
 }

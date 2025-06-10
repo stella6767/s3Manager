@@ -3,9 +3,8 @@
 @param currentUser:UserResponseDto
 
 @template.layout.main(content = @`
-    <main id="main-container"
-          class="bg-gray-50 min-h-screen flex flex-col items-center">
-        @template.components.auth.profileBox(currentUser = currentUser)
-    </main>
+
+    @template.components.auth.profileBox(currentUser = currentUser)
+
 
 `)

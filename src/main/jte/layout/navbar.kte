@@ -2,7 +2,7 @@
 
 <div class="navbar bg-base-100 shadow-sm gap-x-8">
     <div class="navbar-start">
-        <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+        <input id="my-drawer" type="checkbox" class="drawer-toggle"/>
         <div class="drawer-content">
             <!-- Page content here -->
             <label for="my-drawer" class="btn btn-ghost btn-circle drawer-button">
@@ -18,9 +18,19 @@
             <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
             <ul class="menu bg-base-200 text-base-content min-h-full w-80 p-4">
                 <!-- Sidebar content here -->
-                <li><a href="/">s3 connect</a></li>
+                <li><a href="/s3/browser/s"
+                       hx-get="/s3/browser/s"
+                       hx-push-url="true"
+                    >S3 Connect</a></li>
                 @if(isLoggedIn())
-                    <li><a href="/s3/browser">s3 browser</a></li>
+                    <li>
+                        <div hx-get="/s3/browser"
+                             hx-target="#main-container"
+                             hx-push-url="true"
+                        >
+                            S3 Browser
+                        </div>
+                    </li>
                 @endif
             </ul>
         </div>
