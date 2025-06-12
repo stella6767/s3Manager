@@ -33,11 +33,7 @@ class S3Controller(
     ): HtmxRedirectView {
 
         s3Service.testConnection(s3ConnectionRequestDto)
-
-        val s3Key =
-            s3Service.saveS3Key(principal.user, s3ConnectionRequestDto)
-
-        //s3Service.saveS3Objects(s3Key)
+        s3Service.saveS3Key(principal.user, s3ConnectionRequestDto)
 
         return HtmxRedirectView("/s3/browser")
     }
@@ -58,7 +54,6 @@ class S3Controller(
         model: Model,
         htmxRequest: HtmxRequest,
         dto: S3BrowserRequestDto,
-        @PageableDefault(size = 20) pageable: Pageable,
         @AuthenticationPrincipal principal: UserPrincipal,
     ): String {
 
@@ -67,62 +62,52 @@ class S3Controller(
                 ?: throw EntityNotFoundException("s3Key not found")
 
         val objects =
-            s3Service.getObjectsByS3Key(s3Key, dto.prefix, pageable, dto.continuationToken)
+            s3Service.getObjectsByS3Key(s3Key, dto.prefix, dto.size, dto.continuationToken)
 
         val breadcrumbs =
             s3Service.buildBreadcrumbs(dto.prefix)
 
         model.addAttribute("bucket", s3Key.bucket)
         model.addAttribute("objects", objects.objects)
-        model.addAttribute("size", pageable.pageSize)
+        model.addAttribute("size", dto.size)
         model.addAttribute("continuationToken", objects.continuationToken)
         model.addAttribute("currentPath", dto.prefix)
         model.addAttribute("breadcrumbs", breadcrumbs)
+        model.addAttribute("isLast", objects.isLast)
 
-        if (htmxRequest.isHtmxRequest && !dto.isPush) {
+        if (htmxRequest.isHtmxRequest) {
             return "components/s3/objectList"
         }
 
         return "page/s3Browser"
     }
 
+    @HxRequest
+    @GetMapping("/browser/rows")
+    fun s3Rows(
+        model: Model,
+        htmxRequest: HtmxRequest,
+        dto: S3BrowserRequestDto,
+        @AuthenticationPrincipal principal: UserPrincipal,
+    ): String {
 
-//    @HxRequest
-//    @GetMapping("/list")
-//    fun listObjects(
-//        @RequestParam(defaultValue = "") prefix: String,
-//        @PageableDefault(size = 10) pageable: Pageable,
-//        session: HttpSession,
-//        model: Model
-//    ): String {
-//
-//        val config =
-//            getS3Config(session) ?: return handleSessionExpired(model)
-//
-//        val result =
-//            s3Service.listObjectsPaginated(config, prefix, pageable.pageNumber, pageable.pageSize)
-//
-//        if (!result.isSuccess) {
-//            model.addAttribute("error", result.errorMessage)
-//            return "components/s3/connectionForm"
-//        }
-//
-//        val paginatedResult = result.data!!
-//        val breadcrumbs = s3Service.buildBreadcrumbs(prefix)
-//
-//        model.addAttribute("bucket", config.bucket)
-//        model.addAttribute("objects", paginatedResult.objects)
-//        model.addAttribute("currentPath", prefix)
-//        model.addAttribute("breadcrumbs", breadcrumbs)
-//        model.addAttribute("totalCount", paginatedResult.totalCount)
-//        //model.addAttribute("currentPage", page)
-//        model.addAttribute("totalPages", paginatedResult.totalPages)
-//
-//
-//        return   "components/s3/objectList"
-//
-//    }
-//
+        val s3Key =
+            s3Service.findS3KeyByUser(user = principal.user)
+                ?: throw EntityNotFoundException("s3Key not found")
+
+        val objects =
+            s3Service.getObjectsByS3Key(
+                s3Key, dto.prefix, dto.size, dto.continuationToken
+            )
+
+        model.addAttribute("objects", objects.objects)
+        model.addAttribute("size", dto.size)
+        model.addAttribute("continuationToken", objects.continuationToken)
+        model.addAttribute("isLast", objects.isLast)
+
+        return "components/s3/objectBody"
+    }
+
 //    @GetMapping("/search")
 //    fun searchObjects(
 //        @RequestParam query: String,

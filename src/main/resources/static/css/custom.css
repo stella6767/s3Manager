@@ -29,24 +29,19 @@
 }
 
 /* HTMX 요청 진행 중 */
-.htmx-request.spinner-indicator ~ #qr-preview {
-    display: none;
+.htmx-indicator{
+    opacity:0;
+    transition: opacity 500ms ease-in;
+}
+.htmx-request .htmx-indicator{
+    opacity:1;
+}
+.htmx-request.htmx-indicator{
+    opacity:1;
 }
 
-.spinner-indicator {
-    display: none;
-}
 
-.htmx-request .spinner-indicator {
-    display: inline;
-}
 
-.htmx-request.spinner-indicator {
-    display: inline;
-}
-.htmx-indicator { display: none; }
-.htmx-request .htmx-indicator { display: flex; }
-.htmx-request.htmx-indicator { display: flex; }
 
 .file-row:hover {
     background-color: oklch(var(--b2));

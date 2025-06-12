@@ -65,35 +65,13 @@ class S3Service(
     }
 
 
-    @Transactional
-    fun saveS3Objects(
-        s3key: S3Key,
-    ) {
-
-        val s3Client =
-            createS3Client(
-                s3key.accessKey,
-                s3key.secretKey,
-                s3key.region
-            )
-
-        val allObjects =
-            getAllObjects(s3Client, s3key.bucket, "")
-
-        s3ObjectRepository
-            .bulkInsert(allObjects.map { it.toEntity(s3key) })
-
-    }
-
-
     @Transactional(readOnly = true)
     fun getObjectsByS3Key(
         s3key: S3Key,
         prefix: String,
-        pageable: Pageable,
+        size: Int,
         continuationToken: String,
     ): PaginatedS3Objects {
-
 
         val s3Client = createS3Client(
             s3key.accessKey,
@@ -101,7 +79,7 @@ class S3Service(
             s3key.region
         )
 
-        return getObjectsBySize(s3Client, s3key.bucket, prefix, pageable.pageSize, continuationToken)
+        return getObjectsBySize(s3Client, s3key.bucket, prefix, size, continuationToken)
     }
 
 
@@ -232,80 +210,6 @@ class S3Service(
             .build()
     }
 
-    fun getAllObjects(
-        s3Client: S3Client,
-        bucket: String,
-        prefix: String
-    ): List<S3ObjectInfo> {
-
-        val objects =
-            mutableListOf<S3ObjectInfo>()
-        var continuationToken: String? = null
-
-        do {
-
-            val request = ListObjectsV2Request.builder()
-                .bucket(bucket)
-                .prefix(prefix)
-                .delimiter("/") // 폴더 구조 유지
-                .maxKeys(1000)
-                .apply {
-                    continuationToken?.let { continuationToken(it) }
-                }
-                .build()
-
-            val response =
-                s3Client.listObjectsV2(request)
-
-            // 폴더들 (CommonPrefixes) 추가
-            response.commonPrefixes().forEach { commonPrefix ->
-                val folderKey =
-                    commonPrefix.prefix()
-                val folderName =
-                    folderKey.removeSuffix("/").substringAfterLast("/")
-
-                if (folderName.isNotEmpty()) {
-                    objects.add(
-                        S3ObjectInfo(
-                            key = folderKey,
-                            name = folderName,
-                            isDirectory = true,
-                            size = 0L,
-                            lastModified = LocalDateTime.now(),
-                            extension = ""
-                        )
-                    )
-                }
-            }
-
-            // 파일들 추가
-            response.contents().forEach { s3Object ->
-                val key = s3Object.key()
-
-                // 현재 레벨의 객체만 포함 (중첩된 폴더 내부 파일 제외)
-                if (key != prefix && !key.removePrefix(prefix).contains("/")) {
-                    val name = key.substringAfterLast("/")
-                    val extension = if (name.contains(".")) name.substringAfterLast(".") else ""
-
-                    objects.add(
-                        S3ObjectInfo(
-                            key = key,
-                            name = name,
-                            isDirectory = false,
-                            size = s3Object.size(),
-                            lastModified = s3Object.lastModified().atZone(ZoneId.systemDefault()).toLocalDateTime(),
-                            extension = extension
-                        )
-                    )
-                }
-            }
-
-            continuationToken = response.nextContinuationToken()
-        } while (response.isTruncated)
-
-        return objects.sortedWith(compareBy<S3ObjectInfo> { !it.isDirectory }.thenBy { it.name.lowercase() })
-    }
-
 
     fun getObjectsBySize(
         s3Client: S3Client,
@@ -324,7 +228,7 @@ class S3Service(
             .delimiter("/") // 폴더 구조 유지
             .maxKeys(size)
             .apply {
-                if (token.isNotEmpty()) {
+                if (!token.isNullOrBlank()) {
                     continuationToken(token)
                 }
             }
@@ -374,31 +278,12 @@ class S3Service(
         }
 
 
-        val s3ObjectInfos =
-            objects.sortedWith(compareBy<S3ObjectInfo> { !it.isDirectory }.thenBy { it.name.lowercase() })
-
         return PaginatedS3Objects(
-            s3ObjectInfos,
-            response.continuationToken() ?: token
+            objects,
+            response.nextContinuationToken() ?: token,
+            !response.isTruncated
         )
     }
 
-}
-
-data class ServiceResult<T>(
-    val isSuccess: Boolean,
-    val data: T? = null,
-    val errorMessage: String = "",
-    val message: String = ""
-) {
-    companion object {
-        fun <T> success(data: T, message: String = ""): ServiceResult<T> {
-            return ServiceResult(isSuccess = true, data = data, message = message)
-        }
-
-        fun <T> error(errorMessage: String): ServiceResult<T> {
-            return ServiceResult(isSuccess = false, errorMessage = errorMessage)
-        }
-    }
 }
 

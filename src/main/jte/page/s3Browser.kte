@@ -7,6 +7,7 @@
 @param breadcrumbs: List<BreadcrumbItem>
 @param size: Int
 @param continuationToken:String
+@param isLast: Boolean
 
 
 @template.layout.main(content = @`
@@ -101,7 +102,8 @@
         @template.components.s3.objectList(
         objects = objects,
         currentPath = currentPath,
-        continuationToken = continuationToken
+        continuationToken = continuationToken,
+        isLast= isLast
         )
 
     </div>

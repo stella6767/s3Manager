@@ -113,7 +113,8 @@ data class S3keyInfo(
 // 페이지네이션 결과 DTO
 data class PaginatedS3Objects(
     val objects: List<S3ObjectInfo>,
-    val continuationToken: String
+    val continuationToken: String,
+    val isLast:Boolean
 )
 
 
@@ -121,7 +122,7 @@ data class PaginatedS3Objects(
 data class S3BrowserRequestDto(
     val prefix: String = "",
     val continuationToken: String = "",
-    val isPush: Boolean = false
+    val size: Int = 20,
 )
 
 
