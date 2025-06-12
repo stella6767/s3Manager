@@ -8,7 +8,6 @@ import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxRefreshView
 import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxRequest
 import io.github.wimdeblauwe.htmx.spring.boot.mvc.HxRequest
 import jakarta.persistence.EntityNotFoundException
-import jakarta.servlet.http.HttpSession
 import jakarta.validation.Valid
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
@@ -38,7 +37,7 @@ class S3Controller(
         val s3Key =
             s3Service.saveS3Key(principal.user, s3ConnectionRequestDto)
 
-        s3Service.saveS3Objects(s3Key)
+        //s3Service.saveS3Objects(s3Key)
 
         return HtmxRedirectView("/s3/browser")
     }
@@ -58,27 +57,30 @@ class S3Controller(
     fun s3Browser(
         model: Model,
         htmxRequest: HtmxRequest,
-        @RequestParam(defaultValue = "") prefix: String,
-        @PageableDefault(size = 10) pageable: Pageable,
+        dto: S3BrowserRequestDto,
+        @PageableDefault(size = 20) pageable: Pageable,
         @AuthenticationPrincipal principal: UserPrincipal,
     ): String {
 
         val s3Key =
-            s3Service.findS3KeyByUser(user = principal.user) ?: throw EntityNotFoundException("s3Key not found")
+            s3Service.findS3KeyByUser(user = principal.user)
+                ?: throw EntityNotFoundException("s3Key not found")
 
         val objects =
-            s3Service.getObjectsByS3Key(s3Key, pageable)
+            s3Service.getObjectsByS3Key(s3Key, dto.prefix, pageable, dto.continuationToken)
 
         val breadcrumbs =
-            s3Service.buildBreadcrumbs(prefix)
+            s3Service.buildBreadcrumbs(dto.prefix)
 
         model.addAttribute("bucket", s3Key.bucket)
-        model.addAttribute("objects", objects)
-        model.addAttribute("currentPath", prefix)
+        model.addAttribute("objects", objects.objects)
+        model.addAttribute("size", pageable.pageSize)
+        model.addAttribute("continuationToken", objects.continuationToken)
+        model.addAttribute("currentPath", dto.prefix)
         model.addAttribute("breadcrumbs", breadcrumbs)
 
-        if (htmxRequest.isHtmxRequest) {
-            return "components/s3/s3List"
+        if (htmxRequest.isHtmxRequest && !dto.isPush) {
+            return "components/s3/objectList"
         }
 
         return "page/s3Browser"

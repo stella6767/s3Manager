@@ -38,7 +38,7 @@ class GlobalExceptionHandler(
     @ExceptionHandler(Exception::class)
     fun handleException(
         ex: Exception,
-        htmxResponse:HtmxResponse,
+        htmxResponse: HtmxResponse,
         htmxRequest: HtmxRequest,
         response: HttpServletResponse,
         model: Model,
@@ -60,14 +60,19 @@ class GlobalExceptionHandler(
         htmxResponse.reswap = HtmxReswap.innerHtml()
         htmxResponse.retarget = "#error-alert-container"
 
-        if (htmxRequest.isHtmxRequest){
+        if (htmxRequest.isHtmxRequest) {
             htmxResponse.pushUrl = htmxRequest.currentUrl
+        }
+
+        if (!htmxRequest.isHtmxRequest){
+            model.addAttribute("isHtmxRequest", false )
         }
 
         model.addAttribute("msg", ex.message)
 
         return "components/util/errorAlert"
     }
+
 
 
 }

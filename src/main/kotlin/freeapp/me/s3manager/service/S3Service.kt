@@ -8,7 +8,6 @@ import freeapp.me.s3manager.web.dto.*
 import jakarta.persistence.EntityNotFoundException
 import mu.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -90,13 +89,19 @@ class S3Service(
     @Transactional(readOnly = true)
     fun getObjectsByS3Key(
         s3key: S3Key,
+        prefix: String,
         pageable: Pageable,
-    ): Page<S3ObjectInfo> {
+        continuationToken: String,
+    ): PaginatedS3Objects {
 
-        val s3Objects =
-            s3ObjectRepository.findObjectsByS3Key(s3key, pageable)
 
-        return s3Objects.map { S3ObjectInfo.fromEntity(it) }
+        val s3Client = createS3Client(
+            s3key.accessKey,
+            s3key.secretKey,
+            s3key.region
+        )
+
+        return getObjectsBySize(s3Client, s3key.bucket, prefix, pageable.pageSize, continuationToken)
     }
 
 
@@ -119,51 +124,6 @@ class S3Service(
         s3Key.disconnect()
     }
 
-
-    fun listObjectsPaginated(
-        //config: S3Config,
-        prefix: String,
-        page: Int,
-        pageSize: Int
-    ): ServiceResult<PaginatedS3Objects> {
-
-        TODO()
-
-
-//        return try {
-//            val s3Client = createS3Client(config)
-//
-//            // 모든 객체를 가져와서 메모리에서 페이지네이션 (심플한 방식)
-//            val allObjects = getAllObjects(s3Client, config.bucket, prefix)
-//
-//            val totalCount = allObjects.size.toLong()
-//            val totalPages = ceil(totalCount.toDouble() / pageSize).toInt()
-//            val startIndex = (page - 1) * pageSize
-//            val endIndex = minOf(startIndex + pageSize, allObjects.size)
-//
-//            val paginatedObjects = if (startIndex < allObjects.size) {
-//                allObjects.subList(startIndex, endIndex)
-//            } else {
-//                emptyList()
-//            }
-//
-//            s3Client.close()
-//
-//            ServiceResult.success(
-//                PaginatedS3Objects(
-//                    objects = paginatedObjects,
-//                    totalCount = totalCount,
-//                    totalPages = totalPages,
-//                    currentPage = page,
-//                    pageSize = pageSize
-//                )
-//            )
-//        } catch (e: S3Exception) {
-//            ServiceResult.error("객체 목록 조회 실패: ${e.awsErrorDetails()?.errorMessage() ?: e.message}")
-//        } catch (e: Exception) {
-//            ServiceResult.error("객체 목록 조회 실패: ${e.message}")
-//        }
-    }
 
 //    fun searchObjects(
 //        config: S3Config,
@@ -346,6 +306,83 @@ class S3Service(
         return objects.sortedWith(compareBy<S3ObjectInfo> { !it.isDirectory }.thenBy { it.name.lowercase() })
     }
 
+
+    fun getObjectsBySize(
+        s3Client: S3Client,
+        bucket: String,
+        prefix: String,
+        size: Int,
+        token: String
+    ): PaginatedS3Objects {
+
+        val objects =
+            mutableListOf<S3ObjectInfo>()
+
+        val request = ListObjectsV2Request.builder()
+            .bucket(bucket)
+            .prefix(prefix)
+            .delimiter("/") // 폴더 구조 유지
+            .maxKeys(size)
+            .apply {
+                if (token.isNotEmpty()) {
+                    continuationToken(token)
+                }
+            }
+            .build()
+
+        val response = s3Client.listObjectsV2(request)
+
+        // 폴더들 (CommonPrefixes) 추가
+        response.commonPrefixes().forEach { commonPrefix ->
+            val folderKey = commonPrefix.prefix()
+            val folderName =
+                folderKey.removeSuffix("/").substringAfterLast("/")
+            if (folderName.isNotEmpty()) {
+                objects.add(
+                    S3ObjectInfo(
+                        key = folderKey,
+                        name = folderName,
+                        isDirectory = true,
+                        size = 0L,
+                        lastModified = LocalDateTime.now(),
+                        extension = ""
+                    )
+                )
+            }
+        }
+
+        // 파일들 추가
+        response.contents().forEach { s3Object ->
+            val key = s3Object.key()
+
+            // 현재 레벨의 객체만 포함 (중첩된 폴더 내부 파일 제외)
+            if (key != prefix && !key.removePrefix(prefix).contains("/")) {
+                val name = key.substringAfterLast("/")
+                val extension = if (name.contains(".")) name.substringAfterLast(".") else ""
+
+                objects.add(
+                    S3ObjectInfo(
+                        key = key,
+                        name = name,
+                        isDirectory = false,
+                        size = s3Object.size(),
+                        lastModified = s3Object.lastModified().atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                        extension = extension
+                    )
+                )
+            }
+        }
+
+
+        val s3ObjectInfos =
+            objects.sortedWith(compareBy<S3ObjectInfo> { !it.isDirectory }.thenBy { it.name.lowercase() })
+
+        return PaginatedS3Objects(
+            s3ObjectInfos,
+            response.continuationToken() ?: token
+        )
+    }
+
 }
 
 data class ServiceResult<T>(
@@ -365,11 +402,3 @@ data class ServiceResult<T>(
     }
 }
 
-// 페이지네이션 결과 DTO (Controller에서 사용)
-data class PaginatedS3Objects(
-    val objects: List<S3ObjectInfo>,
-    val totalCount: Long,
-    val totalPages: Int,
-    val currentPage: Int,
-    val pageSize: Int
-)

@@ -4,7 +4,6 @@ import freeapp.me.s3manager.entity.S3Key
 import freeapp.me.s3manager.entity.S3Object
 import freeapp.me.s3manager.entity.User
 import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.NotEmpty
 import java.lang.Math.log
 import java.lang.Math.pow
 import java.time.LocalDateTime
@@ -110,6 +109,20 @@ data class S3keyInfo(
     }
 
 }
+
+// 페이지네이션 결과 DTO
+data class PaginatedS3Objects(
+    val objects: List<S3ObjectInfo>,
+    val continuationToken: String
+)
+
+
+
+data class S3BrowserRequestDto(
+    val prefix: String = "",
+    val continuationToken: String = "",
+    val isPush: Boolean = false
+)
 
 
 data class S3ObjectInfo(
