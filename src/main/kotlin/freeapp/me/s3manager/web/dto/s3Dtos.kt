@@ -1,7 +1,6 @@
 package freeapp.me.s3manager.web.dto
 
 import freeapp.me.s3manager.entity.S3Key
-import freeapp.me.s3manager.entity.S3Object
 import freeapp.me.s3manager.entity.User
 import jakarta.validation.constraints.NotBlank
 import java.lang.Math.log
@@ -10,9 +9,14 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+enum class UploadType() {
+    SINGLE,
+    MULTIPART
+}
 
-data class UploadInitiateResponse(
-    val uploadType: String, // "presigned" or "multipart"
+
+data class UploadInitiateResponseDto(
+    val uploadType: UploadType,
     val fileKey: String,
     val presignedUrl: String? = null, // 작은 파일용
     val uploadId: String? = null      // 큰 파일용
@@ -22,7 +26,7 @@ data class UploadInitiateResponse(
 data class InitialUploadReqDto(
     val filename: String,
     val fileSize: Long,
-    val targetObjectDir:String,
+    val targetObjectDir: String,
     val contentType: String
 )
 
@@ -31,21 +35,20 @@ data class PresignedUrlDto(
 )
 
 
-
 data class InitialUploadDto(
     val uploadId: String,
     val fileKey: String,
 )
 
 
-data class S3UploadSignedUrlDto(
+data class PresignedPartRequestDto(
     val fileKey: String,
     val uploadId: String,
     val partNumber: Int
 )
 
 
-data class S3UploadSignedUrlResDto(
+data class PresignedPartResponseDto(
     val partNumber: Int,
     val preSignedUrl: String,
 )
@@ -53,10 +56,9 @@ data class S3UploadSignedUrlResDto(
 
 data class S3UploadResultDto(
     val fileKey: String,
-    val name: String,
-    val size: Long,
-    val fileUrl: String,
-    val isRequest: Boolean,
+    //val name: String,
+    //val size: Long,
+    //val fileUrl: String,
 ) {
 
 
@@ -64,10 +66,8 @@ data class S3UploadResultDto(
 
 
 data class S3UploadCompleteDto(
-    val taskId: Long,
     val uploadId: String,
     val fileKey: String,
-    val isRequest: Boolean,
     val parts: List<S3UploadPartsDetailDto> = mutableListOf()
 ) {
 
@@ -112,7 +112,7 @@ data class S3ConnectionRequestDto(
 data class S3keyInfo(
     val bucket: String,
     val region: String,
-){
+) {
     companion object {
         fun fromEntity(s3Key: S3Key): S3keyInfo {
             return S3keyInfo(
@@ -128,9 +128,8 @@ data class S3keyInfo(
 data class PaginatedS3Objects(
     val objects: MutableList<S3ObjectInfo>,
     val continuationToken: String,
-    val isLast:Boolean
+    val isLast: Boolean
 )
-
 
 
 data class S3BrowserRequestDto(
@@ -161,7 +160,7 @@ data class S3ObjectInfo(
     fun getFormattedDate(): String {
         val formatter =
             DateTimeFormatter.ofPattern("yyyy. M. d. a h:mm:ss")
-            .withZone(ZoneId.of("Asia/Seoul"))
+                .withZone(ZoneId.of("Asia/Seoul"))
         return formatter.format(lastModified)
     }
 

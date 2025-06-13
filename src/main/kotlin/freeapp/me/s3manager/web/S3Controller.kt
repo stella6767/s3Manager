@@ -51,25 +51,85 @@ class S3Controller(
 
 
     @ResponseBody
-    @PostMapping("/upload/presigned-url")
-    fun uploadPresignedUrl(
+    @PostMapping("/upload/initiate")
+    fun initiateUpload(
         @AuthenticationPrincipal principal: UserPrincipal,
         @RequestBody dto: InitialUploadReqDto
-    ): PresignedUrlDto {
+    ): UploadInitiateResponseDto {
 
         val s3Key =
             s3Service.findS3KeyByUser(user = principal.user)
                 ?: throw EntityNotFoundException("s3Key not found")
 
-        val uploadPresignedURL = s3Service.getUploadPresignedURL(
+        val initiateResponseDto = s3Service.initiateUpload(
             s3Key.bucket,
             dto.targetObjectDir,
             dto.filename,
-            dto.contentType
+            dto.contentType,
+            dto.fileSize,
         )
 
-        return PresignedUrlDto(uploadPresignedURL)
+        return initiateResponseDto
     }
+
+    /**
+     * 부분 업로드를 위한 서명된 URL 발급 요청
+     */
+
+    @ResponseBody
+    @PostMapping("/upload/part-url")
+    fun getPresignedPartUrl(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @RequestBody dto: PresignedPartRequestDto
+    ): PresignedPartResponseDto {
+
+        val s3Key =
+            s3Service.findS3KeyByUser(user = principal.user)
+                ?: throw EntityNotFoundException("s3Key not found")
+
+        return PresignedPartResponseDto(dto.partNumber,
+            s3Service.getPresignedPartUrl(s3Key.bucket, dto)
+        )
+    }
+
+    /**
+     * MultiPart Upload 완료 요청
+     */
+
+    @ResponseBody
+    @PostMapping("/upload/complete")
+    fun completeUpload(
+        @RequestBody dto: S3UploadCompleteDto,
+        @AuthenticationPrincipal principal: UserPrincipal,
+    ): S3UploadResultDto {
+
+        val s3Key =
+            s3Service.findS3KeyByUser(user = principal.user)
+                ?: throw EntityNotFoundException("s3Key not found")
+
+        return s3Service.completeUpload(s3Key.bucket, dto)
+    }
+
+
+
+    /**
+     * 멀티파트 업로드 중지
+     */
+
+    @ResponseBody
+    @PostMapping("/upload/abort")
+    fun abortMultipartUpload(
+        @RequestBody s3UploadAbortDto: S3UploadAbortDto,
+        @AuthenticationPrincipal principal: UserPrincipal,
+    ) {
+
+        val s3Key =
+            s3Service.findS3KeyByUser(user = principal.user)
+                ?: throw EntityNotFoundException("s3Key not found")
+
+        s3Service.abortMultipartUpload(s3Key.bucket, s3UploadAbortDto)
+    }
+
 
 
     @HxRequest

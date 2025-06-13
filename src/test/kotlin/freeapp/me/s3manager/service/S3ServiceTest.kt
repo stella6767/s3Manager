@@ -79,8 +79,10 @@ class S3ServiceTest(
     }
 
     @Test
-    fun searchObjects(){
+    fun getUploadPresignedURL(){
 
+        val client =
+            s3Service.createS3Client(accessKey, secretKey, region)
 
 
     }

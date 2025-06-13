@@ -2,12 +2,11 @@ function initializeUploadPage() {
 
     console.log("업로드 페이지 초기화 스크립트 실행!");
 
-
     const dropZone = document.getElementById('drop-zone');
-
     // 요소가 없으면 실행 중단
     if (!dropZone) return;
 
+    // --- 1. DOM 요소 가져오기 ---
     const fileInput = document.getElementById('file-input');
     const uploadBtn = document.getElementById('upload-btn');
     const cancelBtn = document.getElementById('cancel-btn');
@@ -20,12 +19,11 @@ function initializeUploadPage() {
     const checkAllCheckbox = document.getElementById('check-all');
     const uploadProgressView = document.getElementById('upload-progress-view');
     const uploadCompleteView = document.getElementById('upload-complete-view');
+    const closeReportBtn = document.getElementById('close-report-btn');
 
 
+    // --- 2. 상태 변수 정의 ---
     let currentPath = document.querySelector('input[name=currentPath]').value;
-
-    console.log("currentPath", currentPath)
-
     let filesToUpload = [];
     let uploadState = {
         totalSize: 0,
@@ -33,13 +31,11 @@ function initializeUploadPage() {
         startTime: 0
     };
 
-    // 이벤트 리스너 연결
+    // --- 3. 이벤트 리스너 연결 ---
     dropZone.addEventListener('click', (e) => {
         fileInput.click();
     });
-
     fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-
     // 드래그 앤 드롭 이벤트
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -54,30 +50,27 @@ function initializeUploadPage() {
         dropZone.classList.remove('border-primary');
         handleFiles(e.dataTransfer.files);
     });
-
-
     // '전체 선택' 체크박스
     checkAllCheckbox.addEventListener('change', (e) => {
         document.querySelectorAll('.checkbox-item').forEach(cb => cb.checked = e.target.checked);
         updateSummary();
     });
-
-
+    if (closeReportBtn) {
+        closeReportBtn.addEventListener('click', () => {
+            uploadCompleteView.style.display = 'none';
+        });
+    }
     // 지우기 버튼
     clearBtn.addEventListener('click', () => {
-
         // 1. 체크된 모든 체크박스를 찾습니다.
         const checkedCheckboxes =
             document.querySelectorAll('.checkbox-item:checked');
-
         // 2. 삭제할 파일들의 인덱스를 수집합니다.
         const indicesToDelete = [];
-
         checkedCheckboxes.forEach(checkbox => {
             // data-index 속성 값을 가져옵니다. (문자열이므로 숫자로 변환)
             const fileIndex =
                 parseInt(checkbox.closest('tr').dataset.fileIndex, 10);
-
             indicesToDelete.push(fileIndex);
         });
 
@@ -86,7 +79,6 @@ function initializeUploadPage() {
         filesToUpload = filesToUpload.filter((file, index) => {
             return !indicesToDelete.includes(index);
         });
-
         //화면 다시 랜더링
         updateFileList();
     });
@@ -113,7 +105,6 @@ function initializeUploadPage() {
         document.querySelectorAll('.checkbox-item').forEach((el) => {
             el.disabled = true
         })
-
 
         uploadState = {
             totalSize: filesToUpload.reduce((sum, file) => sum + file.size, 0),
@@ -155,6 +146,61 @@ function initializeUploadPage() {
 
         uploadBtn.style.display = 'none'
     }
+
+
+
+    async function uploadSingleFileV2(file, tr) {
+        const statusDiv = tr.querySelector('.status-text');
+        let targetObject = ""
+        if (currentPath.endsWith('/')) {
+            targetObject = currentPath.slice(0, -1)
+        }
+
+        try {
+            // 1. 서버에 업로드 계획 요청
+            statusDiv.textContent = '업로드 준비 중...';
+            const initiateResponse = await fetch('/s3/upload/initiate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: file.name,
+                    fileSize: file.size,
+                    contentType: file.type,
+                    targetObjectDir: targetObject
+                })
+            });
+            if (!initiateResponse.ok) throw new Error('업로드 초기화 실패');
+
+            const initData = await initiateResponse.json();
+
+            // 2. 서버의 계획에 따라 다른 함수 호출
+            if (initData.uploadType === 'SINGLE') {
+                await executePresignedUpload(initData.presignedUrl, file, tr);
+            } else if (initData.uploadType === 'MULTIPART') {
+                await executeMultipartUpload(initData, file, tr);
+            } else {
+                throw new Error('알 수 없는 업로드 타입입니다.');
+            }
+        } catch (error) {
+            console.error(`[${file.name}] 업로드 실패:`, error);
+            statusDiv.textContent = '실패';
+            statusDiv.className = 'status-text text-error font-semibold';
+            throw error; // Promise.allSettled가 실패를 감지하도록 에러를 다시 던짐
+        }
+    }
+
+
+
+    function executePresignedUpload({ url: presignedUrl }, file, tr) {
+        return new Promise((resolve, reject) => {
+            const statusDiv = tr.querySelector('.status-text');
+            const progressBar = tr.querySelector('.progress');
+            // ... XMLHttpRequest를 사용한 업로드 및 진행률 표시 로직 (이전 답변과 동일) ...
+            // 성공 시 resolve(), 실패 시 reject() 호출
+        });
+    }
+
+
 
 
     function uploadSingleFile(file, tr, progressCallback) {
@@ -230,6 +276,72 @@ function initializeUploadPage() {
             }
         });
     }
+
+
+    // ★★★ 신규: 멀티파트 업로드 실행 함수 ★★★
+    async function executeMultipartUpload({ fileKey, uploadId }, file, tr) {
+        const statusDiv = tr.querySelector('.status-text');
+        const progressBar = tr.querySelector('.progress');
+        const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB 조각
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const uploadedParts = [];
+
+        statusDiv.style.display = 'none';
+        progressBar.style.display = 'block';
+
+        for (let i = 0; i < totalChunks; i++) {
+            const partNumber = i + 1;
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+
+            try {
+                // 1. 각 조각(part)에 대한 사전 서명된 URL 요청
+                const partPresignRes = await fetch('/api/uploads/presigned-part-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileKey, uploadId, partNumber })
+                });
+                if (!partPresignRes.ok) throw new Error(`${partNumber}번 조각 URL 요청 실패`);
+
+                const { url: partPresignedUrl } = await partPresignRes.json();
+
+                // 2. 조각 업로드
+                const uploadResponse = await fetch(partPresignedUrl, {
+                    method: 'PUT',
+                    body: chunk
+                });
+                if (!uploadResponse.ok) throw new Error(`${partNumber}번 조각 업로드 실패`);
+
+                // 3. ETag 수집 (매우 중요)
+                const etag = uploadResponse.headers.get('ETag');
+                uploadedParts.push({ partNumber, etag });
+
+                // 전체 진행률 업데이트
+                progressBar.value = (partNumber / totalChunks) * 100;
+
+            } catch (error) {
+                // TODO: 업로드 중단 API (/api/uploads/abort) 호출
+                statusDiv.textContent = '실패';
+                statusDiv.style.display = 'block';
+                progressBar.style.display = 'none';
+                throw error; // 업로드 중단
+            }
+        }
+
+        // 4. 모든 조각 업로드 후, 완료 신호 전송
+        await fetch('/api/uploads/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileKey, uploadId, parts: uploadedParts })
+        });
+
+        statusDiv.textContent = '완료';
+        statusDiv.className = 'status-text text-success font-semibold';
+        statusDiv.style.display = 'block';
+        progressBar.style.display = 'none';
+    }
+
 
 
     // 업로드 진행률 업데이트 함수

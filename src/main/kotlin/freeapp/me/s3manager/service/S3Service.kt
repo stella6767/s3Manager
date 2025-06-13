@@ -7,7 +7,6 @@ import freeapp.me.s3manager.repo.S3ObjectRepository
 import freeapp.me.s3manager.web.dto.*
 import jakarta.persistence.EntityNotFoundException
 import mu.KotlinLogging
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -18,6 +17,7 @@ import software.amazon.awssdk.services.s3.model.*
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
+import software.amazon.awssdk.services.s3.presigner.model.UploadPartPresignRequest
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -34,9 +34,9 @@ class S3Service(
 ) {
 
     private val log = KotlinLogging.logger { }
-
-
     private val s3Utilities = s3Client.utilities()
+    private val UPLOAD_THRESHOLD = 100 * 1024 * 1024 // 100MB
+
 
     fun testConnection(
         connectReq: S3ConnectionRequestDto
@@ -147,9 +147,13 @@ class S3Service(
     }
 
 
+    fun test() {
+
+    }
+
 
     fun getDownloadPresignedUrl(
-        fileKey:String,
+        fileKey: String,
         bucket: String
     ): DownloadDto {
 
@@ -181,15 +185,88 @@ class S3Service(
         return downloadDto
     }
 
-    fun getUploadPresignedURL(
+    fun initiateUpload(
         bucket: String,
         targetObjectDir: String,
         filename: String,
         contentType: String,
+        fileSize: Long,
+    ): UploadInitiateResponseDto {
+
+        val fileKey =
+            targetObjectDir + File.separator + filename
+
+        if (fileSize <= UPLOAD_THRESHOLD) {
+            return UploadInitiateResponseDto(
+                uploadType = UploadType.SINGLE,
+                fileKey = fileKey,
+                presignedUrl = getSingleUploadUrl(bucket, fileKey, contentType)
+            )
+        }
+        return UploadInitiateResponseDto(
+            uploadType = UploadType.MULTIPART,
+            fileKey = fileKey,
+            uploadId = initiateMultipartUpload(bucket, fileKey, contentType)
+        )
+    }
+
+
+    fun initiateMultipartUpload(
+        bucket: String,
+        fileKey: String,
+        contentType: String,
     ): String {
 
-        val fileKey = targetObjectDir + File.separator + filename
+        val createMultipartUploadRequest =
+            CreateMultipartUploadRequest.builder()
+                .bucket(bucket) // 버킷 설정
+                .key(fileKey) // 업로드될 경로 설정
+                .contentType(contentType)
+                .build()
 
+        // Amazon S3는 멀티파트 업로드에 대한 고유 식별자인 업로드 ID가 포함된 응답을 반환합니다.
+        val response =
+            s3Client.createMultipartUpload(createMultipartUploadRequest)
+
+        return response.uploadId()
+    }
+
+
+    fun getPresignedPartUrl(
+        bucket: String,
+        dto: PresignedPartRequestDto,
+    ): String {
+
+        val uploadPartRequest =
+            UploadPartRequest.builder()
+                .bucket(bucket)
+                .key(dto.fileKey)
+                .uploadId(dto.uploadId)
+                .partNumber(dto.partNumber)
+                .build()
+
+        // 미리 서명된 URL 요청
+        // connection pool 문제를 어떻게 해결해야할까..
+        val uploadPartPresignedRequest =
+            UploadPartPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(30))
+                .uploadPartRequest(uploadPartRequest)
+                .build()
+
+        // 클라이언트에서 S3로 직접 업로드하기 위해 사용할 인증된 URL을 받는다.
+        val presignedUploadPartRequest =
+            s3PreSigner.presignUploadPart(uploadPartPresignedRequest)
+
+        return presignedUploadPartRequest.url().toString()
+    }
+
+
+
+    private fun getSingleUploadUrl(
+        bucket: String,
+        fileKey: String,
+        contentType: String
+    ): String {
         val putObjectRequest = PutObjectRequest.builder()
             .bucket(bucket)
             .key(fileKey)
@@ -206,6 +283,73 @@ class S3Service(
 
         return uploadSignedUrl
     }
+
+
+
+    fun completeUpload(
+        bucket: String,
+        s3UploadCompleteDto: S3UploadCompleteDto,
+    ): S3UploadResultDto {
+
+        val completedParts: MutableList<CompletedPart> = ArrayList()
+
+        // 모든 한 영상에 대한 모든 부분들에 부분 번호와 Etag를 설정함
+        for (partForm in s3UploadCompleteDto.parts) {
+            val part = CompletedPart.builder()
+                .partNumber(partForm.partNumber)
+                .eTag(partForm.awsETag)
+                .build()
+            completedParts.add(part)
+        }
+
+        // 멀티파트 업로드 완료 요청을 AWS 서버에 보냄
+        val completedMultipartUpload =
+            CompletedMultipartUpload.builder().parts(completedParts).build()
+
+        val fileKey = s3UploadCompleteDto.fileKey
+
+        val completeMultipartUploadRequest =
+            CompleteMultipartUploadRequest.builder()
+                .bucket(bucket) // 버킷 설정
+                .key(fileKey)
+                .uploadId(s3UploadCompleteDto.uploadId) // 업로드 아이디
+                .multipartUpload(completedMultipartUpload) // 영상의 모든 부분 번호, Etag
+                .build()
+
+        val completeMultipartUploadResponse =
+            s3Client.completeMultipartUpload(completeMultipartUploadRequest)
+        val objectKey = completeMultipartUploadResponse.key()
+        val bucket = completeMultipartUploadResponse.bucket()
+
+        println(objectKey)
+
+        return S3UploadResultDto(
+            fileKey = fileKey,
+        )
+    }
+
+
+    fun abortMultipartUpload(
+        bucket: String,
+        s3UploadAbortDto: S3UploadAbortDto,
+    ) {
+
+        val abortMultipartUploadRequest =
+            AbortMultipartUploadRequest.builder()
+                .bucket(bucket)
+                .key(s3UploadAbortDto.filename)
+                .uploadId(s3UploadAbortDto.uploadId)
+                .build()
+
+        log.info { "abort uploadID===>" + s3UploadAbortDto.uploadId }
+
+        try {
+            s3Client.abortMultipartUpload(abortMultipartUploadRequest)
+        } catch (e: NoSuchUploadException) {
+            log.error { e.localizedMessage }
+        }
+    }
+
 
 
 
