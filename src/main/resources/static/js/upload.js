@@ -1,18 +1,23 @@
-
-
 document.addEventListener('DOMContentLoaded', () => {
     // 요소 가져오기
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
-    const folderInput = document.getElementById('folder-input');
     const uploadBtn = document.getElementById('upload-btn');
     const clearBtn = document.getElementById('clear-btn');
     const fileListTbody = document.getElementById('file-list-tbody');
     const emptyRow = document.getElementById('empty-row');
     const fileCountEl = document.getElementById('file-count');
     const totalSizeEl = document.getElementById('total-size');
+    const checkAllCheckbox = document.getElementById('check-all');
+    const uploadProgressView = document.getElementById('upload-progress-view');
+    const uploadCompleteView = document.getElementById('upload-complete-view');
 
     let filesToUpload = [];
+    let uploadState = {
+        totalSize: 0,
+        totalUploaded: 0,
+        startTime: 0
+    };
 
     // 이벤트 리스너 연결
     dropZone.addEventListener('click', (e) => {
@@ -20,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-    folderInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
     // 드래그 앤 드롭 이벤트
     dropZone.addEventListener('dragover', (e) => {
@@ -37,59 +41,138 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFiles(e.dataTransfer.files);
     });
 
-    // 지우기 및 업로드 버튼
+
+    // '전체 선택' 체크박스
+    checkAllCheckbox.addEventListener('change', (e) => {
+        document.querySelectorAll('.checkbox-item').forEach(cb => cb.checked = e.target.checked);
+        updateSummary();
+    });
+
+
+    // 지우기 버튼
     clearBtn.addEventListener('click', () => {
-        filesToUpload = [];
+
+        // 1. 체크된 모든 체크박스를 찾습니다.
+        const checkedCheckboxes =
+            document.querySelectorAll('.checkbox-item:checked');
+
+        // 2. 삭제할 파일들의 인덱스를 수집합니다.
+        const indicesToDelete = [];
+
+        checkedCheckboxes.forEach(checkbox => {
+            // data-index 속성 값을 가져옵니다. (문자열이므로 숫자로 변환)
+            const fileIndex =
+                parseInt(checkbox.closest('tr').dataset.fileIndex, 10);
+
+            indicesToDelete.push(fileIndex);
+        });
+
+        // 3. filesToUpload 배열을 필터링하여 새로운 배열을 만듭니다.
+        //    (삭제할 인덱스 목록에 포함되지 않은 파일들만 남깁니다.)
+        filesToUpload = filesToUpload.filter((file, index) => {
+            return !indicesToDelete.includes(index);
+        });
+
+        //화면 다시 랜더링
         updateFileList();
     });
 
     uploadBtn.addEventListener('click', () => {
         // TODO: 업로드 로직 시작
-        console.log('업로드를 시작합니다:', filesToUpload);
-        alert('업로드 기능은 여기에 구현해야 합니다.');
+        if (filesToUpload.length > 0) {
+            console.log('업로드를 시작합니다:', filesToUpload);
+            uploadAllFiles();
+        }
     });
 
 
     async function uploadAllFiles() {
         // 업로드 시작 시 버튼 비활성화
         uploadBtn.disabled = true;
-        uploadBtn.textContent = '업로드 중...';
+        uploadBtn.innerHTML = `<span class="loading loading-spinner"></span> 업로드 중...`;
+        clearBtn.disabled = true;
+        checkAllCheckbox.disabled = true;
+        uploadCompleteView.style.display = 'none';
+        uploadProgressView.style.display = 'block';
+        dropZone.style.display = 'hidden';
+
+
+        uploadState = {
+            totalSize: filesToUpload.reduce((sum, file) => sum + file.size, 0),
+            totalUploaded: 0,
+            startTime: Date.now()
+        };
+
+        let successCount = 0;
+        let failCount = 0;
 
         const uploadPromises = filesToUpload.map((file, index) => {
             // 각 파일에 해당하는 테이블 행(tr)을 찾습니다.
-            const tr = fileListTbody.rows[index];
-            return uploadSingleFile(file, tr);
+            //const tr = fileListTbody.rows[index];
+            const tr = fileListTbody.querySelector(`[data-file-index='${index}']`);
+            return uploadSingleFile(file, tr, (chunkLoaded) => {
+                updateOverallProgress(chunkLoaded);
+            });
         });
 
-        // 모든 파일 업로드가 끝날 때까지 기다립니다.
-        await Promise.all(uploadPromises);
 
-        alert('모든 파일 업로드가 완료되었습니다!');
-        uploadBtn.textContent = '업로드';
-        // 여기서 목록을 비우거나 다른 후속 조치를 할 수 있습니다.
-        // filesToUpload = [];
-        // updateFileList();
+        // 모든 Promise 결과 처리
+        const results = await Promise.allSettled(uploadPromises);
+        results.forEach(result => {
+            if (result.status === 'fulfilled') {
+                successCount++;
+            } else {
+                failCount++;
+            }
+        });
+
+        // 2. UI 상태 전환: 업로드 중 -> 완료
+        uploadProgressView.style.display = 'none';
+        uploadCompleteView.style.display = 'block';
+
+        // 3. 완료 리포트 데이터 채우기
+        document.getElementById('successful-files-stats').textContent = `${successCount}개 파일, ${formatBytes(filesToUpload.filter((f, i) => results[i].status === 'fulfilled').reduce((s, f) => s + f.size, 0))}`;
+        document.getElementById('failed-files-stats').textContent = `${failCount}개 파일, ${formatBytes(filesToUpload.filter((f, i) => results[i].status === 'rejected').reduce((s, f) => s + f.size, 0))}`;
+
+
+        // try {
+        //     // 모든 파일 업로드가 (성공 또는 실패로) 끝날 때까지 기다립니다.
+        //     await Promise.allSettled(uploadPromises);
+        //     alert('모든 파일 처리가 완료되었습니다!');
+        // } catch (error) {
+        //     console.error("업로드 중 예외 발생:", error);
+        //     alert('업로드 중 심각한 오류가 발생했습니다.');
+        // } finally {
+        //     // 모든 작업 완료 후 버튼 및 UI 다시 활성화
+        //     uploadBtn.innerHTML = '업로드';
+        //     clearBtn.disabled = false;
+        //     checkAllCheckbox.disabled = false;
+        //     updateSummary(); // 최종 상태에 맞게 버튼 다시 업데이트
+        // }
+
     }
 
 
-    function uploadSingleFile(file, tr) {
+    function uploadSingleFile(file, tr, progressCallback) {
 
         return new Promise(async (resolve, reject) => {
-            const statusCell = tr.cells[4]; // 상태 <td>
-            const progressBar = statusCell.querySelector('.progress');
+            const statusDiv = tr.querySelector('.status-text');
+            const progressBar = tr.querySelector('.progress');
+            let lastLoadedInFile = 0;
 
             try {
                 // 1. 서버에 사전 서명된 URL 요청
-                statusCell.innerHTML = 'URL 요청 중...';
-                const presignResponse = await fetch('/api/uploads/presigned-url', {
+                const presignResponse = await fetch('/s3/upload/presigned-url', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ filename: file.name, contentType: file.type })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({filename: file.name, contentType: file.type, fileSize: file.size, targetObjectDir: ""})
                 });
+
+
 
                 if (!presignResponse.ok) throw new Error('사전 서명된 URL을 받아오지 못했습니다.');
 
-                const { url: presignedUrl } = await presignResponse.json();
+                const {url: presignedUrl} = await presignResponse.json();
 
                 // 2. XMLHttpRequest를 사용하여 S3에 직접 업로드 (진행률 추적을 위해)
                 const xhr = new XMLHttpRequest();
@@ -99,18 +182,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 업로드 진행률 이벤트 리스너
                 xhr.upload.onprogress = (event) => {
                     if (event.lengthComputable) {
-                        const percentComplete = (event.loaded / event.total) * 100;
-                        progressBar.value = percentComplete;
-                        statusCell.innerHTML = `업로드 중: ${Math.round(percentComplete)}%`;
-                        statusCell.prepend(progressBar); // progress 바를 다시 앞에 추가
+                        const percent = (event.loaded / event.total) * 100;
+                        progressBar.value = percent;
+
+                        const chunkLoaded = event.loaded - lastLoadedInFile;
+
+                        lastLoadedInFile = event.loaded;
+                        progressCallback(chunkLoaded);
                     }
                 };
 
                 // 업로드 완료 이벤트 리스너
                 xhr.onload = () => {
                     if (xhr.status === 200) {
-                        statusCell.innerHTML = '<span class="text-success font-semibold">완료</span>';
-                        progressBar.value = 100;
+                        statusDiv.textContent = '성공';
+                        statusDiv.className = 'status-text text-success font-semibold';
                         resolve('Upload complete');
                     } else {
                         throw new Error(`업로드 실패: ${xhr.statusText}`);
@@ -119,7 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 업로드 에러 이벤트 리스너
                 xhr.onerror = () => {
-                    statusCell.innerHTML = '<span class="text-error font-semibold">실패</span>';
+                    statusDiv.textContent = '실패';
+                    statusDiv.className = 'status-text text-error font-semibold';
                     reject('Network error');
                 };
 
@@ -127,10 +214,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 console.error(error);
-                statusCell.innerHTML = `<span class="text-error font-semibold">실패</span>`;
+                statusDiv.textContent = '실패';
+                statusDiv.className = 'status-text text-error font-semibold';
                 reject(error);
             }
         });
+    }
+
+
+    // 업로드 진행률 업데이트 함수
+    function updateOverallProgress(chunkLoaded) {
+        uploadState.totalUploaded += chunkLoaded;
+        const now = Date.now();
+        const timeDiff = (now - uploadState.startTime) / 1000; // 초 단위
+        const speed = uploadState.totalUploaded / timeDiff; // Bytes per second
+
+
+        const percentComplete = uploadState.totalSize > 0 ? (uploadState.totalUploaded / uploadState.totalSize) * 100 : 0;
+        document.getElementById('overall-progress-bar').value = percentComplete;
+        document.getElementById('overall-progress-percent').textContent = `${Math.round(percentComplete)}%`;
+
+        const remainingSize = uploadState.totalSize - uploadState.totalUploaded;
+        const remainingTime = speed > 0 ? remainingSize / speed : Infinity;
+
+        document.getElementById('speed-stats').textContent = `${formatBytes(speed)}/s`;
+        document.getElementById('time-remaining-stats').textContent = isFinite(remainingTime) ? `${Math.round(remainingTime)}초` : '-';
+        document.getElementById('files-remaining-stats').textContent = `${filesToUpload.length}개, ${formatBytes(remainingSize)}`;
+
     }
 
 
@@ -155,15 +265,21 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadBtn.disabled = false;
             filesToUpload.forEach((file, index) => {
                 const tr = document.createElement('tr');
+                // ★★★ tr에 data-index 속성으로 인덱스 저장 ★★★
+                tr.dataset.fileIndex = index;
                 tr.innerHTML = `
-                    <th><input type="checkbox" class="checkbox"></th>
-                    <td>${file.name}</td>
+                    <th><input type="checkbox" class="checkbox checkbox-item"></th>
+                    <td class="truncate">${file.name}</td>
                     <td>${file.type || '알 수 없음'}</td>
                     <td>${formatBytes(file.size)}</td>
                     <td>
-                        <progress class="progress progress-secondary w-full" value="100" max="100"></progress>
+                        <div class="status-text">대기</div>
                     </td>
                 `;
+
+                // 새로 생성된 체크박스를 찾아서 'change' 이벤트가 발생하면 상태를 업데이트하도록 합니다.
+                tr.querySelector('.checkbox-item').addEventListener('change', updateSummary);
+
                 fileListTbody.appendChild(tr);
             });
         }
@@ -172,9 +288,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateSummary() {
-        fileCountEl.textContent = filesToUpload.length;
-        const totalSize = filesToUpload.reduce((sum, file) => sum + file.size, 0);
+        const fileCount = filesToUpload.length;
+        fileCountEl.textContent = fileCount;
+        const totalSize =
+            filesToUpload.reduce((sum, file) => sum + file.size, 0);
         totalSizeEl.textContent = formatBytes(totalSize);
+
+        // ★★★ 버튼 상태 업데이트 로직 ★★★
+        const checkedCount =
+            document.querySelectorAll('.checkbox-item:checked').length;
+
+        console.log("checkedCount", checkedCount)
+
+        // '선택 항목 삭제' 버튼: 체크된 것이 1개 이상이면 활성화
+        clearBtn.disabled = checkedCount === 0;
+
+        // '업로드' 버튼: 업로드할 파일이 1개 이상이면 활성화
+        uploadBtn.disabled = fileCount === 0;
+
+
+        const checkAll = document.getElementById('check-all');
+        if (checkAll) {
+            checkAll.checked = fileCount > 0 && checkedCount === fileCount;
+        }
+
     }
 
     // 파일 크기 포맷팅 함수

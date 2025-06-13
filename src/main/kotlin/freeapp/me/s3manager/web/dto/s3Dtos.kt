@@ -22,8 +22,14 @@ data class UploadInitiateResponse(
 data class InitialUploadReqDto(
     val filename: String,
     val fileSize: Long,
+    val targetObjectDir:String,
     val contentType: String
 )
+
+data class PresignedUrlDto(
+    val url: String,
+)
+
 
 
 data class InitialUploadDto(

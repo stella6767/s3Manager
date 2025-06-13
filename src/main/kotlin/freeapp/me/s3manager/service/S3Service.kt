@@ -183,7 +183,8 @@ class S3Service(
     fun getUploadPresignedURL(
         bucket: String,
         targetObjectDir: String,
-        filename: String
+        filename: String,
+        contentType: String,
     ): String {
 
         val fileKey = targetObjectDir + File.separator + filename
@@ -191,7 +192,7 @@ class S3Service(
         val putObjectRequest = PutObjectRequest.builder()
             .bucket(bucket)
             .key(fileKey)
-            //.contentType("image/jpeg")
+            .contentType(contentType)
             .build()
 
         val preSignRequest = PutObjectPresignRequest.builder()

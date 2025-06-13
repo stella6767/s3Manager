@@ -27,9 +27,33 @@ class S3Controller(
 ) {
 
     @GetMapping("/upload")
-    fun uploadPage(): String {
+    fun uploadPage(
+        @AuthenticationPrincipal principal: UserPrincipal,
+    ): String {
 
         return "page/upload"
+    }
+
+
+    @ResponseBody
+    @PostMapping("/upload/presigned-url")
+    fun uploadPresignedUrl(
+        @AuthenticationPrincipal principal: UserPrincipal,
+        @RequestBody dto: InitialUploadReqDto
+    ): PresignedUrlDto {
+
+        val s3Key =
+            s3Service.findS3KeyByUser(user = principal.user)
+                ?: throw EntityNotFoundException("s3Key not found")
+
+        val uploadPresignedURL = s3Service.getUploadPresignedURL(
+            s3Key.bucket,
+            dto.targetObjectDir,
+            dto.filename,
+            dto.contentType
+        )
+
+        return PresignedUrlDto(uploadPresignedURL)
     }
 
 
@@ -144,8 +168,6 @@ class S3Controller(
             .status(HttpStatus.OK)
             .build()
     }
-
-
 
 
 }
