@@ -3,6 +3,8 @@
 @param objects: List<S3ObjectInfo>
 @param continuationToken:String
 @param isLast: Boolean
+@param currentPath: String
+
 
 @if(objects.isEmpty())
     <tr>
@@ -17,44 +19,80 @@
             </div>
         </td>
     </tr>
+
+
+
+
 @else
+
+
     @for(obj in objects)
 
-        <tr class="hover:bg-base-200 cursor-pointer">
-            <td>
-                <span class="text-2xl">${obj.getFileIcon()}</span>
-            </td>
-            <td>
-                <div class="flex items-center gap-2">
-                    <span class="font-medium">${obj.name}</span>
-                    @if(!obj.isDirectory && obj.extension.isNotEmpty())
-                        <span class="badge badge-ghost badge-sm">${obj.extension}</span>
-                    @endif
-                </div>
-            </td>
-            <td>
-                @if(!obj.isDirectory)
-                    <span class="text-sm">${obj.getFormattedSize()}</span>
-                @else
-                    <span class="text-gray-400">-</span>
-                @endif
-            </td>
-            <td>
-                <span class="text-sm">${obj.getFormattedDate()}</span>
-            </td>
-        </tr>
+        @if(obj.isDirectory)
+            <tr
+                    class="hover:bg-base-200 cursor-pointer"
+                    hx-get="/s3/browser"
+                    hx-vals='{"prefix": "${obj.key}"}'
+                    hx-target="#objects-container"
+                    hx-include="#size-select"
+            >
 
+                <td>
+                    <span class="text-2xl">${obj.getFileIcon()}</span>
+                </td>
+                <td>
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium">${obj.name}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="text-gray-400">-</span>
+
+                </td>
+                <td>
+                    <span class="text-sm">-</span>
+                </td>
+            </tr>
+        @else
+            <tr
+                    class="hover:bg-base-200 cursor-pointer"
+            >
+
+                <td>
+                    <span class="text-2xl">${obj.getFileIcon()}</span>
+                </td>
+                <td>
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium">${obj.name}</span>
+                        @if(!obj.isDirectory && obj.extension.isNotEmpty())
+                            <span class="badge badge-ghost badge-sm">${obj.extension}</span>
+                        @endif
+                    </div>
+                </td>
+                <td>
+
+                    <span class="text-sm">${obj.getFormattedSize()}</span>
+
+                </td>
+                <td>
+                    <span class="text-sm">${obj.getFormattedDate()}</span>
+                </td>
+
+            </tr>
+        @endif
     @endfor
 
     @if(continuationToken.isNotEmpty() && !isLast)
         <tr id="loader-row"
+            hx-indicator="#spinner"
             hx-get="/s3/browser/rows?continuationToken=${continuationToken}"
             hx-include="#size-select"
             hx-trigger="revealed"
-            hx-swap="afterend">
+            hx-swap="outerHTML">
             <img id="spinner" class="htmx-indicator" src="/img/spinning-circles.svg"/>
         </tr>
     @endif
 
 @endif
+
 

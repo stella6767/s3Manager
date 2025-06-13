@@ -1,16 +1,16 @@
 package freeapp.me.s3manager.service
 
 import freeapp.me.s3manager.repo.S3KeyRepository
+import freeapp.me.s3manager.repo.S3ObjectRepository
 
 import freeapp.me.s3manager.web.dto.S3ConnectionRequestDto
+import freeapp.me.s3manager.web.dto.S3ObjectInfo
 import org.junit.jupiter.api.Test
 
-import org.junit.jupiter.api.Assertions.*
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.TestConstructor
 import org.springframework.test.context.bean.override.mockito.MockitoBean
-import org.springframework.test.util.TestSocketUtils
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 
@@ -32,12 +32,15 @@ class S3ServiceTest(
     @MockitoBean
     lateinit var s3KeyRepository: S3KeyRepository
 
+    @MockitoBean
+    lateinit var s3ObjectRepository: S3ObjectRepository
+
 
     @Value("\${s3.accessKey}")
-    private lateinit var accessKey:String
+    private lateinit var accessKey: String
 
     @Value("\${s3.secretKey}")
-    private lateinit var secretKey:String
+    private lateinit var secretKey: String
 
     private val region = "ap-northeast-2"
 
@@ -55,21 +58,33 @@ class S3ServiceTest(
     }
 
     @Test
-    fun getAllObjects() {
+    fun getObjectsBySize() {
 
         val client =
             s3Service.createS3Client(accessKey, secretKey, region)
 
-        val allObjects =
-            s3Service.getAllObjects(client, bucket, "")
+        val s3Objects =
+            s3Service.getObjectsBySize(client, bucket, "", 100, "")
 
-        allObjects.forEach {
-            println(it)
-        }
-
+//        s3Objects.objects.forEach {
+//            println(it)
+//        }
 
     }
 
+
+    @Test
+    fun buildBreadcrumbs() {
+
+        val objects =
+            mutableListOf<S3ObjectInfo>()
+
+        val breadcrumbs =
+            s3Service.buildBreadcrumbs("b2b/test/", objects)
+
+        println(breadcrumbs)
+
+    }
 
 
 }

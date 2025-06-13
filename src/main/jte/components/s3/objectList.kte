@@ -6,12 +6,14 @@
 @param continuationToken:String
 @param isLast: Boolean
 
+
 <!-- Objects Table -->
 <div id="objects-container"
      class="overflow-x-auto"
 >
+
     <table class="table table-zebra w-full"
-           hx-indicator="#spinner"
+
     >
         <thead>
         <tr>
@@ -22,7 +24,12 @@
         </tr>
         </thead>
         <tbody id="objects-tbody">
-            @template.components.s3.objectBody(objects = objects, continuationToken = continuationToken, isLast = isLast)
+            @template.components.s3.objectBody(
+            objects = objects,
+            continuationToken = continuationToken,
+            isLast = isLast,
+            currentPath = currentPath
+            )
         </tbody>
     </table>
 </div>

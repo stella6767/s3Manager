@@ -112,7 +112,7 @@ data class S3keyInfo(
 
 // 페이지네이션 결과 DTO
 data class PaginatedS3Objects(
-    val objects: List<S3ObjectInfo>,
+    val objects: MutableList<S3ObjectInfo>,
     val continuationToken: String,
     val isLast:Boolean
 )
@@ -131,7 +131,7 @@ data class S3ObjectInfo(
     val name: String,
     val isDirectory: Boolean,
     val size: Long,
-    val lastModified: LocalDateTime,
+    val lastModified: LocalDateTime?,
     val extension: String
 ) {
     fun getFormattedSize(): String {
@@ -145,7 +145,8 @@ data class S3ObjectInfo(
     }
 
     fun getFormattedDate(): String {
-        val formatter = DateTimeFormatter.ofPattern("yyyy. M. d. a h:mm:ss")
+        val formatter =
+            DateTimeFormatter.ofPattern("yyyy. M. d. a h:mm:ss")
             .withZone(ZoneId.of("Asia/Seoul"))
         return formatter.format(lastModified)
     }
@@ -163,30 +164,21 @@ data class S3ObjectInfo(
         }
     }
 
-    fun toEntity(s3key: S3Key): S3Object {
-        return S3Object(
-            s3Key = s3key,
-            objectKey = key,
-            name = name,
-            isDirectory = isDirectory,
-            size = size,
-            lastModified = lastModified,
-            extension = extension,
-        )
-    }
-
     companion object {
-        fun fromEntity(s3Object: S3Object): S3ObjectInfo {
+
+        fun toDirectoryDto(key: String, name: String): S3ObjectInfo {
 
             return S3ObjectInfo(
-                key = s3Object.objectKey,
-                name = s3Object.name,
-                isDirectory = s3Object.isDirectory,
-                size = s3Object.size,
-                lastModified = s3Object.lastModified,
-                extension = s3Object.extension,
+                key = key,
+                name = name,
+                isDirectory = true,
+                size = 0L,
+                lastModified = null,
+                extension = ""
             )
+
         }
+
     }
 
 }
@@ -196,9 +188,4 @@ data class FolderTreeNode(
     val name: String,
     val path: String,
     val children: MutableList<FolderTreeNode> = mutableListOf()
-)
-
-data class BreadcrumbItem(
-    val name: String,
-    val path: String
 )

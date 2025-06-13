@@ -4,7 +4,6 @@
 @param bucket: String
 @param objects: List<S3ObjectInfo>
 @param currentPath: String
-@param breadcrumbs: List<BreadcrumbItem>
 @param size: Int
 @param continuationToken:String
 @param isLast: Boolean
@@ -35,49 +34,34 @@
             </div>
         </div>
 
-        <!-- Breadcrumb Navigation -->
-        @if(breadcrumbs.isNotEmpty())
-            <div class="breadcrumbs text-sm mb-4">
-                <ul>
-                    <li>
-                        <a href="#"
-                           hx-get="/s3/list"
-                           hx-vals='{"prefix": "", "page": "1"}'
-                           hx-target="#main-content"
-                           hx-swap="innerHTML">
-                            🪣 ${bucket}
-                        </a>
-                    </li>
-                    @for(crumb in breadcrumbs)
-                        <li>
-                            <a href="#"
-                               hx-get="/s3/list"
-                               hx-vals='{"prefix": "${crumb.path}", "page": "1"}'
-                               hx-target="#main-content"
-                               hx-swap="innerHTML">
-                                ${crumb.name}
-                            </a>
-                        </li>
-                    @endfor
-                </ul>
-            </div>
-        @endif
-
 
         <div class="flex justify-between items-center mb-4">
-            <div class="input-group flex gap-1">
+            <div
+                    class="input-group flex gap-1"
+                    hx-trigger="keydown[key=='Enter'] from:#search-input, click from:#search-input-btn"
+                    hx-include="#search-input"
+                    hx-get="/s3/browser"
+                    hx-target="#objects-container"
+                    hx-swap="outerHTML"
+            >
                 <input type="text"
                        id="search-input"
+                       name="prefix"
                        placeholder="객체 이름으로 검색..."
                        class="input input-bordered flex-1"
-                       onkeyup="handleSearch(event)"/>
-                <button class="btn btn-square" onclick="performSearch()">
+                />
+                <button
+                        id="search-input-btn"
+                        class="btn btn-square"
+                >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
                          stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                 </button>
+
+
             </div>
             <div class="flex items-center gap-2">
                 <label class="text-sm">페이지당 표시:</label>
@@ -107,32 +91,5 @@
         )
 
     </div>
-
-    <script>
-        function handleSearch(event) {
-            if (event.key === 'Enter') {
-                performSearch();
-            }
-        }
-
-        function performSearch() {
-            const query = document.getElementById('search-input').value;
-            const currentPath = '${currentPath}';
-
-            htmx.ajax('GET', '/s3/search', {
-                values: {
-                    query: query,
-                    prefix: currentPath,
-                    page: 1
-                },
-                target: '#objects-container',
-                swap: 'innerHTML'
-            });
-        }
-
-        function getCurrentPath() {
-            return '${currentPath}';
-        }
-    </script>
 
 `)

@@ -9,8 +9,6 @@ import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxRequest
 import io.github.wimdeblauwe.htmx.spring.boot.mvc.HxRequest
 import jakarta.persistence.EntityNotFoundException
 import jakarta.validation.Valid
-import org.springframework.data.domain.Pageable
-import org.springframework.data.web.PageableDefault
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
@@ -64,15 +62,15 @@ class S3Controller(
         val objects =
             s3Service.getObjectsByS3Key(s3Key, dto.prefix, dto.size, dto.continuationToken)
 
-        val breadcrumbs =
-            s3Service.buildBreadcrumbs(dto.prefix)
+        val finalObjects =
+            s3Service.buildBreadcrumbs(dto.prefix, objects.objects)
+
 
         model.addAttribute("bucket", s3Key.bucket)
-        model.addAttribute("objects", objects.objects)
+        model.addAttribute("objects", finalObjects)
         model.addAttribute("size", dto.size)
         model.addAttribute("continuationToken", objects.continuationToken)
         model.addAttribute("currentPath", dto.prefix)
-        model.addAttribute("breadcrumbs", breadcrumbs)
         model.addAttribute("isLast", objects.isLast)
 
         if (htmxRequest.isHtmxRequest) {
@@ -104,6 +102,8 @@ class S3Controller(
         model.addAttribute("size", dto.size)
         model.addAttribute("continuationToken", objects.continuationToken)
         model.addAttribute("isLast", objects.isLast)
+        model.addAttribute("currentPath", dto.prefix)
+
 
         return "components/s3/objectBody"
     }

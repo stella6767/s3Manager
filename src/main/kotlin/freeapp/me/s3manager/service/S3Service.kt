@@ -8,7 +8,6 @@ import freeapp.me.s3manager.web.dto.*
 import jakarta.persistence.EntityNotFoundException
 import mu.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -17,7 +16,6 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
-import java.time.LocalDateTime
 import java.time.ZoneId
 
 
@@ -31,13 +29,7 @@ class S3Service(
 
     private val log = KotlinLogging.logger { }
 
-
-    @Value("\${s3.bucket}")
-    private lateinit var bucket: String
-
-    @Value("\${s3.url}")
-    private lateinit var staticUrl: String
-
+    
     private val s3Utilities = s3Client.utilities()
 
     fun testConnection(
@@ -79,7 +71,12 @@ class S3Service(
             s3key.region
         )
 
-        return getObjectsBySize(s3Client, s3key.bucket, prefix, size, continuationToken)
+        val s3Objects =
+            getObjectsBySize(s3Client, s3key.bucket, prefix, size, continuationToken)
+
+        s3Client.close()
+
+        return s3Objects
     }
 
 
@@ -103,95 +100,53 @@ class S3Service(
     }
 
 
-//    fun searchObjects(
-//        config: S3Config,
-//        prefix: String,
-//        query: String,
-//        page: Int,
-//        pageSize: Int
-//    ): ServiceResult<PaginatedS3Objects> {
-//        return try {
-//            val s3Client = createS3Client(config)
-//
-//            val allObjects = getAllObjects(s3Client, config.bucket, prefix)
-//            val filteredObjects = allObjects.filter {
-//                it.name.contains(query, ignoreCase = true)
-//            }
-//
-//            val totalCount = filteredObjects.size.toLong()
-//            val totalPages = ceil(totalCount.toDouble() / pageSize).toInt()
-//            val startIndex = (page - 1) * pageSize
-//            val endIndex = minOf(startIndex + pageSize, filteredObjects.size)
-//
-//            val paginatedObjects = if (startIndex < filteredObjects.size) {
-//                filteredObjects.subList(startIndex, endIndex)
-//            } else {
-//                emptyList()
-//            }
-//
-//            s3Client.close()
-//
-//            ServiceResult.success(
-//                PaginatedS3Objects(
-//                    objects = paginatedObjects,
-//                    totalCount = totalCount,
-//                    totalPages = totalPages,
-//                    currentPage = page,
-//                    pageSize = pageSize
-//                )
-//            )
-//        } catch (e: S3Exception) {
-//            ServiceResult.error("검색 실패: ${e.awsErrorDetails()?.errorMessage() ?: e.message}")
-//        } catch (e: Exception) {
-//            ServiceResult.error("검색 실패: ${e.message}")
-//        }
-//    }
+    fun searchObjects(
+        s3Client: S3Client,
+        bucket: String,
 
-//    fun getObjectInfo(config: S3Config, key: String): ServiceResult<S3ObjectInfo> {
-//        return try {
-//            val s3Client = createS3Client(config)
-//
-//            val response = s3Client.headObject(
-//                HeadObjectRequest.builder()
-//                    .bucket(config.bucket)
-//                    .key(key)
-//                    .build()
-//            )
-//
-//            val name = key.substringAfterLast("/")
-//            val extension = if (name.contains(".")) name.substringAfterLast(".") else ""
-//
-//            val objectInfo = S3ObjectInfo(
-//                key = key,
-//                name = name,
-//                isDirectory = key.endsWith("/"),
-//                size = response.contentLength(),
-//                lastModified = response.lastModified(),
-//                extension = extension
-//            )
-//
-//            s3Client.close()
-//            ServiceResult.success(objectInfo)
-//        } catch (e: S3Exception) {
-//            ServiceResult.error("객체 정보 조회 실패: ${e.awsErrorDetails()?.errorMessage() ?: e.message}")
-//        } catch (e: Exception) {
-//            ServiceResult.error("객체 정보 조회 실패: ${e.message}")
-//        }
-//    }
+    ) {
+        val request = SelectObjectContentRequest.builder()
+            .bucket(bucket)
+            .key("object-list") // 객체 목록이 저장된 파일
+            .expression("SELECT * FROM S3Object[*] s WHERE s.key LIKE '%업로드%'")
+            .expressionType(ExpressionType.SQL)
+            .inputSerialization(
+                InputSerialization.builder()
+                    .json(JSONInput.builder().type(JSONType.LINES).build())
+                    .build()
+            )
+            .outputSerialization(
+                OutputSerialization.builder()
+                    .json(JSONOutput.builder().build())
+                    .build()
+            )
+            .build()
 
-    fun buildBreadcrumbs(prefix: String): List<BreadcrumbItem> {
-        if (prefix.isEmpty()) return emptyList()
+    }
 
-        val parts = prefix.trim('/').split("/")
-        val breadcrumbs = mutableListOf<BreadcrumbItem>()
+
+    fun buildBreadcrumbs(
+        prefix: String,
+        objects: MutableList<S3ObjectInfo>
+    ): List<S3ObjectInfo> {
+
+        if (prefix.isEmpty()) return objects
+
+        val parts =
+            prefix.split("/").dropLast(1)
+
+        val directoryDto =
+            S3ObjectInfo.toDirectoryDto("", "")
+
+        objects.add(0, directoryDto)
+
         var currentPath = ""
-
-        for (part in parts) {
+        for ((index, part) in parts.withIndex()) {
             currentPath += "$part/"
-            breadcrumbs.add(BreadcrumbItem(name = part, path = currentPath))
+            objects.add(index + 1, S3ObjectInfo.toDirectoryDto(currentPath, part))
         }
 
-        return breadcrumbs
+        return objects
     }
 
     // Private helper methods
@@ -243,14 +198,7 @@ class S3Service(
                 folderKey.removeSuffix("/").substringAfterLast("/")
             if (folderName.isNotEmpty()) {
                 objects.add(
-                    S3ObjectInfo(
-                        key = folderKey,
-                        name = folderName,
-                        isDirectory = true,
-                        size = 0L,
-                        lastModified = LocalDateTime.now(),
-                        extension = ""
-                    )
+                    S3ObjectInfo.toDirectoryDto(folderKey, folderName)
                 )
             }
         }
@@ -258,6 +206,8 @@ class S3Service(
         // 파일들 추가
         response.contents().forEach { s3Object ->
             val key = s3Object.key()
+
+            println(key)
 
             // 현재 레벨의 객체만 포함 (중첩된 폴더 내부 파일 제외)
             if (key != prefix && !key.removePrefix(prefix).contains("/")) {

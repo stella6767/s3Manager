@@ -3,7 +3,7 @@
 !{
     var url = "";
     if (isSignUp) {
-        url = "/auth/sign-up";
+        "/auth/sign-up";
     }else {
         url = "/auth/login";
     }
