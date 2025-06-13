@@ -27,7 +27,6 @@ data class UserResponseDto(
 
 
 data class UpdateProfileDto(
-    val password: String,
+    val password: String = "",
     val username: String,
-
 )

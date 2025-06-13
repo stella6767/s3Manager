@@ -55,6 +55,7 @@ function initializeUploadPage() {
         document.querySelectorAll('.checkbox-item').forEach(cb => cb.checked = e.target.checked);
         updateSummary();
     });
+
     if (closeReportBtn) {
         closeReportBtn.addEventListener('click', () => {
             uploadCompleteView.style.display = 'none';
@@ -90,7 +91,6 @@ function initializeUploadPage() {
         }
     });
 
-
     async function uploadAllFiles() {
         // 업로드 시작 시 버튼 비활성화
         uploadBtn.disabled = true;
@@ -112,28 +112,16 @@ function initializeUploadPage() {
             startTime: Date.now()
         };
 
-        let successCount = 0;
-        let failCount = 0;
-
         const uploadPromises = filesToUpload.map((file, index) => {
-            // 각 파일에 해당하는 테이블 행(tr)을 찾습니다.
-            //const tr = fileListTbody.rows[index];
             const tr = fileListTbody.querySelector(`[data-file-index='${index}']`);
-            return uploadSingleFile(file, tr, (chunkLoaded) => {
-                updateOverallProgress(chunkLoaded);
-            });
+            return uploadSingleFileV2(file, tr);
         });
-
 
         // 모든 Promise 결과 처리
         const results = await Promise.allSettled(uploadPromises);
-        results.forEach(result => {
-            if (result.status === 'fulfilled') {
-                successCount++;
-            } else {
-                failCount++;
-            }
-        });
+        // 최종 결과 집계
+        let successCount = results.filter(r => r.status === 'fulfilled').length;
+        let failCount = results.length - successCount;
 
         // 2. UI 상태 전환: 업로드 중 -> 완료
         uploadProgressView.style.display = 'none';
@@ -148,7 +136,6 @@ function initializeUploadPage() {
     }
 
 
-
     async function uploadSingleFileV2(file, tr) {
         const statusDiv = tr.querySelector('.status-text');
         let targetObject = ""
@@ -158,10 +145,10 @@ function initializeUploadPage() {
 
         try {
             // 1. 서버에 업로드 계획 요청
-            statusDiv.textContent = '업로드 준비 중...';
+            statusDiv.textContent = '업로드 중..';
             const initiateResponse = await fetch('/s3/upload/initiate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     filename: file.name,
                     fileSize: file.size,
@@ -190,158 +177,104 @@ function initializeUploadPage() {
     }
 
 
-
-    function executePresignedUpload({ url: presignedUrl }, file, tr) {
-        return new Promise((resolve, reject) => {
-            const statusDiv = tr.querySelector('.status-text');
-            const progressBar = tr.querySelector('.progress');
-            // ... XMLHttpRequest를 사용한 업로드 및 진행률 표시 로직 (이전 답변과 동일) ...
-            // 성공 시 resolve(), 실패 시 reject() 호출
-        });
+    function executePresignedUpload(presignedUrl, file, tr) {
+        // 단일 파일 업로드는 전체 진행률 계산에 직접 기여해야 함
+        const progressCallback = (chunkLoaded) => updateOverallProgress(chunkLoaded);
+        return uploadChunkWithXHR(presignedUrl, file, file.type, tr, progressCallback);
     }
 
 
-
-
-    function uploadSingleFile(file, tr, progressCallback) {
-
-        return new Promise(async (resolve, reject) => {
+    /**
+     * XMLHttpRequest를 사용해 실제 데이터(청크)를 업로드하고 진행률을 보고하는 함수
+     */
+    function uploadChunkWithXHR(url, chunk, contentType, tr, progressCallback) {
+        return new Promise((resolve, reject) => {
             const statusDiv = tr.querySelector('.status-text');
-            let lastLoadedInFile = 0;
-            let targetObject = ""
+            const xhr = new XMLHttpRequest();
 
-            if (currentPath.endsWith('/')) {
-                targetObject = currentPath.slice(0, -1)
-            }
+            xhr.open('PUT', url, true);
+            xhr.setRequestHeader('Content-Type', contentType);
 
-            try {
-                // 1. 서버에 사전 서명된 URL 요청
-                const presignResponse = await fetch('/s3/upload/presigned-url', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        filename: file.name,
-                        contentType: file.type,
-                        fileSize: file.size,
-                        targetObjectDir: targetObject
-                    })
-                });
-
-
-                if (!presignResponse.ok) throw new Error('사전 서명된 URL을 받아오지 못했습니다.');
-
-                const {url: presignedUrl} = await presignResponse.json();
-
-                // 2. XMLHttpRequest를 사용하여 S3에 직접 업로드 (진행률 추적을 위해)
-                const xhr = new XMLHttpRequest();
-                xhr.open('PUT', presignedUrl, true);
-                xhr.setRequestHeader('Content-Type', file.type);
-
-                // 업로드 진행률 이벤트 리스너
+            let lastLoaded = 0;
+            if (progressCallback) {
                 xhr.upload.onprogress = (event) => {
                     if (event.lengthComputable) {
-                        //const percent = (event.loaded / event.total) * 100;
-                        const chunkLoaded = event.loaded - lastLoadedInFile;
-
-                        lastLoadedInFile = event.loaded;
+                        const chunkLoaded = event.loaded - lastLoaded;
+                        lastLoaded = event.loaded;
                         progressCallback(chunkLoaded);
                     }
                 };
+            }
 
-                // 업로드 완료 이벤트 리스너
-                xhr.onload = () => {
-                    if (xhr.status === 200) {
-                        statusDiv.textContent = '성공';
-                        statusDiv.className = 'status-text text-success font-semibold';
-                        resolve('Upload complete');
-                    } else {
-                        throw new Error(`업로드 실패: ${xhr.statusText}`);
-                    }
-                };
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    const etag = xhr.getResponseHeader('ETag');
+                    statusDiv.textContent = '성공';
+                    statusDiv.className = 'status-text text-success font-semibold';
+                    resolve(etag);
+                } else {
+                    reject(new Error(`업로드 실패: ${xhr.statusText}`));
+                }
+            };
 
-                // 업로드 에러 이벤트 리스너
-                xhr.onerror = () => {
-                    statusDiv.textContent = '실패';
-                    statusDiv.className = 'status-text text-error font-semibold';
-                    reject('Network error');
-                };
-
-                xhr.send(file);
-
-            } catch (error) {
-                console.error(error);
+            xhr.onerror = () => {
                 statusDiv.textContent = '실패';
                 statusDiv.className = 'status-text text-error font-semibold';
-                reject(error);
+                reject(new Error('네트워크 오류'));
             }
+            xhr.send(chunk);
         });
     }
 
 
-    // ★★★ 신규: 멀티파트 업로드 실행 함수 ★★★
-    async function executeMultipartUpload({ fileKey, uploadId }, file, tr) {
+
+    /**
+     * [큰 파일] 멀티파트 업로드 실행
+     */
+    async function executeMultipartUpload(initiateResponse, file, tr) {
+
+        const fileKey = initiateResponse.fileKey;
+        const uploadId = initiateResponse.uploadId;
         const statusDiv = tr.querySelector('.status-text');
-        const progressBar = tr.querySelector('.progress');
-        const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB 조각
+        const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         const uploadedParts = [];
-
-        statusDiv.style.display = 'none';
-        progressBar.style.display = 'block';
 
         for (let i = 0; i < totalChunks; i++) {
             const partNumber = i + 1;
             const start = i * CHUNK_SIZE;
-            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const end = start + CHUNK_SIZE;
             const chunk = file.slice(start, end);
 
-            try {
-                // 1. 각 조각(part)에 대한 사전 서명된 URL 요청
-                const partPresignRes = await fetch('/api/uploads/presigned-part-url', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileKey, uploadId, partNumber })
-                });
-                if (!partPresignRes.ok) throw new Error(`${partNumber}번 조각 URL 요청 실패`);
+            // 1. 각 조각(part)에 대한 사전 서명된 URL 요청
+            const partPresignedRes = await fetch('/s3/upload/part-url', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({fileKey: fileKey, uploadId: uploadId, partNumber: partNumber})
+            });
+            if (!partPresignedRes.ok) throw new Error(`${partNumber}번 조각 URL 요청 실패`);
 
-                const { url: partPresignedUrl } = await partPresignRes.json();
+            const result = await partPresignedRes.json();
 
-                // 2. 조각 업로드
-                const uploadResponse = await fetch(partPresignedUrl, {
-                    method: 'PUT',
-                    body: chunk
-                });
-                if (!uploadResponse.ok) throw new Error(`${partNumber}번 조각 업로드 실패`);
+            // 3. ETag 수집 (매우 중요)
+            const etag =
+                await uploadChunkWithXHR(result.preSignedUrl, chunk, 'application/octet-stream', tr); // 개별 진행률은 콜백없이
+            uploadedParts.push({partNumber, etag});
 
-                // 3. ETag 수집 (매우 중요)
-                const etag = uploadResponse.headers.get('ETag');
-                uploadedParts.push({ partNumber, etag });
-
-                // 전체 진행률 업데이트
-                progressBar.value = (partNumber / totalChunks) * 100;
-
-            } catch (error) {
-                // TODO: 업로드 중단 API (/api/uploads/abort) 호출
-                statusDiv.textContent = '실패';
-                statusDiv.style.display = 'block';
-                progressBar.style.display = 'none';
-                throw error; // 업로드 중단
-            }
+            // 멀티파트의 전체 진행률은 각 파트 완료 시 업데이트
+            updateOverallProgress(chunk.size);
         }
 
         // 4. 모든 조각 업로드 후, 완료 신호 전송
-        await fetch('/api/uploads/complete', {
+        await fetch('/s3/upload/complete', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileKey, uploadId, parts: uploadedParts })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({fileKey: fileKey, uploadId: uploadId, parts: uploadedParts})
         });
 
         statusDiv.textContent = '완료';
         statusDiv.className = 'status-text text-success font-semibold';
-        statusDiv.style.display = 'block';
-        progressBar.style.display = 'none';
     }
-
 
 
     // 업로드 진행률 업데이트 함수

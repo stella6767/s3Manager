@@ -63,7 +63,9 @@ class User(
 
     fun update(username: String, encPassword: String) {
         this.username = username
-        this.password = encPassword
+        if (encPassword.isNotBlank()){
+            this.password = encPassword
+        }
     }
 
     enum class Status(

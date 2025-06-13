@@ -175,7 +175,6 @@ class S3Controller(
         val finalObjects =
             s3Service.buildBreadcrumbs(dto.prefix, objects.objects)
 
-
         model.addAttribute("bucket", s3Key.bucket)
         model.addAttribute("objects", finalObjects)
         model.addAttribute("size", dto.size)
@@ -184,10 +183,10 @@ class S3Controller(
         model.addAttribute("isLast", objects.isLast)
 
         if (htmxRequest.isHtmxRequest) {
-
+            //model.asMap()
             return FragmentsRendering
                 .with("components/s3/objectList")
-                .fragment("components/s3/uploadPageBtn")
+                .fragment("components/s3/s3BtnNavbar")
                 .build()
         }
 

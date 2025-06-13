@@ -54,7 +54,12 @@ class UserService(
             userRepository.findByIdOrNull(userId)
                 ?: throw EntityNotFoundException("can not find user with id ${userId}")
 
-        user.update(profileDto.username, encoder.encode(profileDto.password))
+        val encPassword = if (profileDto.password.isNotBlank()){
+                encoder.encode(profileDto.password)
+        } else ""
+
+        user.update(profileDto.username, encPassword)
+
         //principal.user = user //세션동기화
         return UserResponseDto.fromEntity(user)
     }

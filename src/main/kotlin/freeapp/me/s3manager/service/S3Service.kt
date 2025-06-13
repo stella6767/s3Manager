@@ -321,8 +321,6 @@ class S3Service(
         val objectKey = completeMultipartUploadResponse.key()
         val bucket = completeMultipartUploadResponse.bucket()
 
-        println(objectKey)
-
         return S3UploadResultDto(
             fileKey = fileKey,
         )
@@ -393,8 +391,6 @@ class S3Service(
         // 파일들 추가
         response.contents().forEach { s3Object ->
             val key = s3Object.key()
-
-            println(key)
 
             // 현재 레벨의 객체만 포함 (중첩된 폴더 내부 파일 제외)
             if (key != prefix && !key.removePrefix(prefix).contains("/")) {
