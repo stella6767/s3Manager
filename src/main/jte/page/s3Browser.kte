@@ -11,22 +11,23 @@
 
 @template.layout.main(content = @`
 
-    <div id="s3-list" class="container mx-auto p-4 max-w-7xl">
-        <!-- Header -->
-        <div class="navbar bg-base-100 border-b mb-6">
-            <div class="navbar-start">
-                <h1 class="text-2xl font-bold text-primary">S3 Browser</h1>
-                <div class="badge badge-outline ml-3">${bucket}</div>
-            </div>
-            <div class="navbar-end">
+    @template.layout.mainContainer(content = @`
+        <div id="s3-list" class="container mx-auto p-4 max-w-7xl">
+            <!-- Header -->
+            <div class="navbar bg-base-100 border-b mb-6">
+                <div class="navbar-start">
+                    <h1 class="text-2xl font-bold text-primary">S3 Browser</h1>
+                    <div class="badge badge-outline ml-3">${bucket}</div>
+                </div>
+                <div class="navbar-end">
 
-                <button id="download-btn" class="btn btn-outline btn-sm mr-2"
-                        hx-get="/s3/download"
-                        hx-indicator="#download-spinner"
-                        hx-include=".row-checkbox:checked"
-                        hx-swap="none"
-                        disabled="disabled"
-                        hx-on-download-file="
+                    <button id="download-btn" class="btn btn-outline btn-sm mr-2"
+                            hx-get="/s3/download"
+                            hx-indicator="#download-spinner"
+                            hx-include=".row-checkbox:checked"
+                            hx-swap="none"
+                            disabled="disabled"
+                            hx-on-download-file="
                             console.log('downloadFile event triggered. URL:', event.detail.url);
                             let link = document.createElement('a');
                             link.href = event.detail.url;
@@ -35,92 +36,96 @@
                             link.click();
                             document.body.removeChild(link);
                         "
-                >
-                    다운로드
-                    <img id="download-spinner" class="htmx-indicator" src="/img/spinning-circles.svg"/>
-                </button>
+                    >
+                        다운로드
+                        <img id="download-spinner" class="htmx-indicator" src="/img/spinning-circles.svg"/>
+                    </button>
 
 
-                <button id="upload-btn" class="btn btn-outline btn-sm mr-2"
-                        hx-get="/s3/list"
-                        hx-target="#main-content"
-                        hx-swap="innerHTML"
-                >
-                    업로드
-                </button>
+                    <button id="upload-btn"
+                            class="btn btn-outline btn-sm mr-2"
+                            <%--                        hx-get="/s3/list"--%>
+                            <%--                        hx-target="#main-content"--%>
+                            <%--                        hx-swap="innerHTML"--%>
+                    >
+                        <a href="/s3/upload">
+                            업로드
+                        </a>
+                    </button>
 
-                <button id="refresh-btn" class="btn btn-outline btn-sm mr-2"
-                        hx-get="/s3/list"
-                        <%--                    hx-vals='{"prefix": "${currentPath}", "page": "${objects.number + 1}"}'--%>
-                        hx-target="#main-content"
-                        hx-swap="innerHTML">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                    새로고침
-                </button>
+                    <button id="refresh-btn" class="btn btn-outline btn-sm mr-2"
+                            hx-get="/s3/list"
+                            <%--                    hx-vals='{"prefix": "${currentPath}", "page": "${objects.number + 1}"}'--%>
+                            hx-target="#main-content"
+                            hx-swap="innerHTML">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        새로고침
+                    </button>
 
 
 
+                </div>
             </div>
-        </div>
 
 
-        <div class="flex justify-between items-center mb-2">
-            <div
-                    class="input-group flex gap-1"
-                    hx-trigger="keydown[key=='Enter'] from:#search-input, click from:#search-input-btn"
-                    hx-include="#search-input"
-                    hx-get="/s3/browser"
-                    hx-target="#objects-container"
-                    hx-swap="outerHTML"
-            >
-                <input type="text"
-                       id="search-input"
-                       name="prefix"
-                       placeholder="접두사로 객체 찾기"
-                       class="input input-bordered flex-1"
-                />
-                <button
-                        id="search-input-btn"
-                        class="btn btn-square"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                         stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                </button>
-
-
-            </div>
-            <div class="flex items-center gap-2">
-                <label class="text-sm">페이지당 표시:</label>
-                <select id="size-select"
-                        name="size"
-                        class="select select-bordered select-sm"
+            <div class="flex justify-between items-center mb-2">
+                <div
+                        class="input-group flex gap-1"
+                        hx-trigger="keydown[key=='Enter'] from:#search-input, click from:#search-input-btn"
+                        hx-include="#search-input"
                         hx-get="/s3/browser"
-                        hx-trigger="change"
                         hx-target="#objects-container"
                         hx-swap="outerHTML"
                 >
-                    <option value="20" selected="${size == 20}">20개</option>
-                    <option value="50" selected="${size == 50}">50개</option>
-                    <option value="100" selected="${size == 100}">100개</option>
-                </select>
+                    <input type="text"
+                           id="search-input"
+                           name="prefix"
+                           placeholder="접두사로 객체 찾기"
+                           class="input input-bordered flex-1"
+                    />
+                    <button
+                            id="search-input-btn"
+                            class="btn btn-square"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                             stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </button>
+
+
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-sm">페이지당 표시:</label>
+                    <select id="size-select"
+                            name="size"
+                            class="select select-bordered select-sm"
+                            hx-get="/s3/browser"
+                            hx-trigger="change"
+                            hx-target="#objects-container"
+                            hx-swap="outerHTML"
+                    >
+                        <option value="20" selected="${size == 20}">20개</option>
+                        <option value="50" selected="${size == 50}">50개</option>
+                        <option value="100" selected="${size == 100}">100개</option>
+                    </select>
+                </div>
             </div>
+
+
+            <!-- Objects List -->
+            @template.components.s3.objectList(
+            objects = objects,
+            currentPath = currentPath,
+            continuationToken = continuationToken,
+            isLast= isLast
+            )
+
         </div>
-
-
-        <!-- Objects List -->
-        @template.components.s3.objectList(
-        objects = objects,
-        currentPath = currentPath,
-        continuationToken = continuationToken,
-        isLast= isLast
-        )
-
-    </div>
+    `)
 
 `)

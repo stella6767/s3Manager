@@ -26,6 +26,12 @@ class S3Controller(
     private val mapper: ObjectMapper,
 ) {
 
+    @GetMapping("/upload")
+    fun uploadPage(): String {
+
+        return "page/upload"
+    }
+
 
     @HxRequest
     @PostMapping("/connect")
@@ -126,7 +132,7 @@ class S3Controller(
                 ?: throw EntityNotFoundException("s3Key not found")
 
         val downloadDto =
-            s3Service.getPresignedUrl(fileKey, s3Key.bucket)
+            s3Service.getDownloadPresignedUrl(fileKey, s3Key.bucket)
 
         // JSON 생성: {"eventName":{"key":"value"}}
         val triggerJson =

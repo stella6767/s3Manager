@@ -11,12 +11,20 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 
+data class UploadInitiateResponse(
+    val uploadType: String, // "presigned" or "multipart"
+    val fileKey: String,
+    val presignedUrl: String? = null, // 작은 파일용
+    val uploadId: String? = null      // 큰 파일용
+)
+
+
 data class InitialUploadReqDto(
     val filename: String,
-) {
+    val fileSize: Long,
+    val contentType: String
+)
 
-
-}
 
 data class InitialUploadDto(
     val uploadId: String,
@@ -178,7 +186,6 @@ data class S3ObjectInfo(
             )
 
         }
-
     }
 
 }

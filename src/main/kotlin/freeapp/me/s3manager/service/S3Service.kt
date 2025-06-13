@@ -7,7 +7,6 @@ import freeapp.me.s3manager.repo.S3ObjectRepository
 import freeapp.me.s3manager.web.dto.*
 import jakarta.persistence.EntityNotFoundException
 import mu.KotlinLogging
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -17,6 +16,8 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
+import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Duration
@@ -146,7 +147,7 @@ class S3Service(
 
 
 
-    fun getPresignedUrl(
+    fun getDownloadPresignedUrl(
         fileKey:String,
         bucket: String
     ): DownloadDto {
@@ -171,7 +172,6 @@ class S3Service(
 
         val urlString = presignedUrl.url().toString()
 
-
         val downloadDto = DownloadDto(
             url = urlString,
             filename = encodedFileName
@@ -179,6 +179,32 @@ class S3Service(
 
         return downloadDto
     }
+
+    fun getUploadPresignedURL(
+        bucket: String,
+        targetObjectDir: String,
+        filename: String
+    ): String {
+
+        val fileKey = targetObjectDir + File.separator + filename
+
+        val putObjectRequest = PutObjectRequest.builder()
+            .bucket(bucket)
+            .key(fileKey)
+            //.contentType("image/jpeg")
+            .build()
+
+        val preSignRequest = PutObjectPresignRequest.builder()
+            .signatureDuration(Duration.ofMinutes(30)) // The URL will expire in  minutes.
+            .putObjectRequest(putObjectRequest)
+            .build()
+
+        val uploadSignedUrl =
+            s3PreSigner.presignPutObject(preSignRequest).url().toString()
+
+        return uploadSignedUrl
+    }
+
 
 
     fun getObjectsBySize(

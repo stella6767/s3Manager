@@ -1,0 +1,8 @@
+
+@param content: gg.jte.Content
+
+<main id="main-container"
+      class="min-h-screen flex flex-col items-center">
+    ${content}
+
+</main>

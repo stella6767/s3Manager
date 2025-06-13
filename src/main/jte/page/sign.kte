@@ -2,7 +2,9 @@
 
 @template.layout.main(content = @`
 
-    @template.components.auth.signBox(isSignUp = isSignUp)
+    @template.layout.mainContainer(content = @`
+        @template.components.auth.signBox(isSignUp = isSignUp)
+    `)
 
 `)
 

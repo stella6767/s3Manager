@@ -4,7 +4,8 @@
 
 @template.layout.main(content = @`
 
-    @template.components.auth.profileBox(currentUser = currentUser)
-
+    @template.layout.mainContainer(content = @`
+        @template.components.auth.profileBox(currentUser = currentUser)
+    `)
 
 `)
