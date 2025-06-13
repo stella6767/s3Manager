@@ -17,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.servlet.view.FragmentsRendering
 
 
 @RequestMapping("/s3")
@@ -28,8 +29,22 @@ class S3Controller(
 
     @GetMapping("/upload")
     fun uploadPage(
+        model: Model,
+        htmxRequest: HtmxRequest,
+        @RequestParam currentPath: String = "",
         @AuthenticationPrincipal principal: UserPrincipal,
     ): String {
+
+        val s3Key =
+            s3Service.findS3KeyByUser(user = principal.user)
+                ?: throw EntityNotFoundException("s3Key not found")
+
+        model.addAttribute("currentPath", currentPath)
+        model.addAttribute("bucket", s3Key.bucket)
+
+        if (htmxRequest.isHtmxRequest) {
+            return "components/s3/uploadForm"
+        }
 
         return "page/upload"
     }
@@ -88,7 +103,7 @@ class S3Controller(
         htmxRequest: HtmxRequest,
         dto: S3BrowserRequestDto,
         @AuthenticationPrincipal principal: UserPrincipal,
-    ): String {
+    ): FragmentsRendering {
 
         val s3Key =
             s3Service.findS3KeyByUser(user = principal.user)
@@ -109,10 +124,14 @@ class S3Controller(
         model.addAttribute("isLast", objects.isLast)
 
         if (htmxRequest.isHtmxRequest) {
-            return "components/s3/objectList"
+
+            return FragmentsRendering
+                .with("components/s3/objectList")
+                .fragment("components/s3/uploadPageBtn")
+                .build()
         }
 
-        return "page/s3Browser"
+        return FragmentsRendering.with("page/s3Browser").build()
     }
 
     @HxRequest

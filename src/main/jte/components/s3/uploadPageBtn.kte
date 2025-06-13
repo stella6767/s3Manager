@@ -1,0 +1,13 @@
+@param currentPath: String
+
+<button id="upload-btn"
+        class="btn btn-outline btn-sm mr-2"
+        hx-get="/s3/upload"
+        hx-vals='{"currentPath": "${currentPath}"}'
+        hx-target="#main-container"
+        hx-swap="outerHTML"
+        hx-push-url="/s3/upload"
+        hx-swap-oob="true"
+>
+    업로드 ${currentPath}
+</button>

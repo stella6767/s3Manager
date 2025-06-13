@@ -41,17 +41,8 @@
                         <img id="download-spinner" class="htmx-indicator" src="/img/spinning-circles.svg"/>
                     </button>
 
+                    @template.components.s3.uploadPageBtn(currentPath = currentPath)
 
-                    <button id="upload-btn"
-                            class="btn btn-outline btn-sm mr-2"
-                            <%--                        hx-get="/s3/list"--%>
-                            <%--                        hx-target="#main-content"--%>
-                            <%--                        hx-swap="innerHTML"--%>
-                    >
-                        <a href="/s3/upload">
-                            업로드
-                        </a>
-                    </button>
 
                     <button id="refresh-btn" class="btn btn-outline btn-sm mr-2"
                             hx-get="/s3/list"
@@ -64,7 +55,6 @@
                         </svg>
                         새로고침
                     </button>
-
 
 
                 </div>

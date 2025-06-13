@@ -1,6 +1,13 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // 요소 가져오기
+function initializeUploadPage() {
+
+    console.log("업로드 페이지 초기화 스크립트 실행!");
+
+
     const dropZone = document.getElementById('drop-zone');
+
+    // 요소가 없으면 실행 중단
+    if (!dropZone) return;
+
     const fileInput = document.getElementById('file-input');
     const uploadBtn = document.getElementById('upload-btn');
     const clearBtn = document.getElementById('clear-btn');
@@ -94,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         checkAllCheckbox.disabled = true;
         uploadCompleteView.style.display = 'none';
         uploadProgressView.style.display = 'block';
-        dropZone.style.display = 'hidden';
+        dropZone.style.display = 'none';
 
 
         uploadState = {
@@ -165,9 +172,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const presignResponse = await fetch('/s3/upload/presigned-url', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({filename: file.name, contentType: file.type, fileSize: file.size, targetObjectDir: ""})
+                    body: JSON.stringify({
+                        filename: file.name,
+                        contentType: file.type,
+                        fileSize: file.size,
+                        targetObjectDir: ""
+                    })
                 });
-
 
 
                 if (!presignResponse.ok) throw new Error('사전 서명된 URL을 받아오지 못했습니다.');
@@ -323,4 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
     }
-});
+}
+
+document.addEventListener('DOMContentLoaded', initializeUploadPage);

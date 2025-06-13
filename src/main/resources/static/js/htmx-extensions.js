@@ -1,4 +1,3 @@
-
 // document.addEventListener("htmx:beforeSwap", (event) => {
 //     const status = event.detail.xhr.status;
 //     // 2xx가 아닌 경우 URL 변경 차단
@@ -17,4 +16,8 @@ htmx.defineExtension('hx-dataset-include', {
     }
 })
 
+function initUploadJS() {
+    console.log('htmx 컨텐츠가 교체되었습니다. 이벤트 리스너를 다시 등록합니다.');
+    initializeUploadPage();
+}
 
