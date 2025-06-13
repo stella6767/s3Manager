@@ -16,6 +16,10 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.*
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.time.Duration
 import java.time.ZoneId
 
 
@@ -29,7 +33,7 @@ class S3Service(
 
     private val log = KotlinLogging.logger { }
 
-    
+
     private val s3Utilities = s3Client.utilities()
 
     fun testConnection(
@@ -97,33 +101,8 @@ class S3Service(
             s3KeyRepository.findKeyByUser(user) ?: throw EntityNotFoundException("s3key not found")
 
         s3Key.disconnect()
-    }
-
-
-    fun searchObjects(
-        s3Client: S3Client,
-        bucket: String,
-
-    ) {
-        val request = SelectObjectContentRequest.builder()
-            .bucket(bucket)
-            .key("object-list") // 객체 목록이 저장된 파일
-            .expression("SELECT * FROM S3Object[*] s WHERE s.key LIKE '%업로드%'")
-            .expressionType(ExpressionType.SQL)
-            .inputSerialization(
-                InputSerialization.builder()
-                    .json(JSONInput.builder().type(JSONType.LINES).build())
-                    .build()
-            )
-            .outputSerialization(
-                OutputSerialization.builder()
-                    .json(JSONOutput.builder().build())
-                    .build()
-            )
-            .build()
 
     }
-
 
     fun buildBreadcrumbs(
         prefix: String,
@@ -163,6 +142,42 @@ class S3Service(
             .region(Region.of(region))
             .credentialsProvider(StaticCredentialsProvider.create(credentials))
             .build()
+    }
+
+
+
+    fun getPresignedUrl(
+        fileKey:String,
+        bucket: String
+    ): DownloadDto {
+
+        val filename = fileKey.substringAfterLast('/')
+        val encodedFileName =
+            URLEncoder.encode(filename, StandardCharsets.UTF_8.toString())
+
+        val getObjectRequest = GetObjectRequest.builder()
+            .bucket(bucket)
+            .key(fileKey)
+            .responseContentDisposition("attachment; filename=\"$encodedFileName\"")
+            .build()
+
+        val presignRequest = GetObjectPresignRequest.builder()
+            .signatureDuration(Duration.ofMinutes(30))
+            .getObjectRequest(getObjectRequest)
+            .build()
+
+        val presignedUrl =
+            s3PreSigner.presignGetObject(presignRequest)
+
+        val urlString = presignedUrl.url().toString()
+
+
+        val downloadDto = DownloadDto(
+            url = urlString,
+            filename = encodedFileName
+        )
+
+        return downloadDto
     }
 
 

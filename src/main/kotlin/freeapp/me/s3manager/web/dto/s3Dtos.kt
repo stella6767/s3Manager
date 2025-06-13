@@ -184,8 +184,11 @@ data class S3ObjectInfo(
 }
 
 
-data class FolderTreeNode(
-    val name: String,
-    val path: String,
-    val children: MutableList<FolderTreeNode> = mutableListOf()
+data class DownloadDto(
+    val url: String,
+    val filename: String,
+)
+
+data class DownloadEventDto(
+    val downloadFile: DownloadDto
 )

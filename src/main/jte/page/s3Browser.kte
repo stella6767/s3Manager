@@ -19,6 +19,36 @@
                 <div class="badge badge-outline ml-3">${bucket}</div>
             </div>
             <div class="navbar-end">
+
+                <button id="download-btn" class="btn btn-outline btn-sm mr-2"
+                        hx-get="/s3/download"
+                        hx-indicator="#download-spinner"
+                        hx-include=".row-checkbox:checked"
+                        hx-swap="none"
+                        disabled="disabled"
+                        hx-on-download-file="
+                            console.log('downloadFile event triggered. URL:', event.detail.url);
+                            let link = document.createElement('a');
+                            link.href = event.detail.url;
+                            link.download = decodeURIComponent(event.detail.filename || 'download');
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        "
+                >
+                    다운로드
+                    <img id="download-spinner" class="htmx-indicator" src="/img/spinning-circles.svg"/>
+                </button>
+
+
+                <button id="upload-btn" class="btn btn-outline btn-sm mr-2"
+                        hx-get="/s3/list"
+                        hx-target="#main-content"
+                        hx-swap="innerHTML"
+                >
+                    업로드
+                </button>
+
                 <button id="refresh-btn" class="btn btn-outline btn-sm mr-2"
                         hx-get="/s3/list"
                         <%--                    hx-vals='{"prefix": "${currentPath}", "page": "${objects.number + 1}"}'--%>
@@ -31,11 +61,13 @@
                     새로고침
                 </button>
 
+
+
             </div>
         </div>
 
 
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center mb-2">
             <div
                     class="input-group flex gap-1"
                     hx-trigger="keydown[key=='Enter'] from:#search-input, click from:#search-input-btn"
@@ -47,7 +79,7 @@
                 <input type="text"
                        id="search-input"
                        name="prefix"
-                       placeholder="객체 이름으로 검색..."
+                       placeholder="접두사로 객체 찾기"
                        class="input input-bordered flex-1"
                 />
                 <button
@@ -77,7 +109,6 @@
                     <option value="50" selected="${size == 50}">50개</option>
                     <option value="100" selected="${size == 100}">100개</option>
                 </select>
-
             </div>
         </div>
 

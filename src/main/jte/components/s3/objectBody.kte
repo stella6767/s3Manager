@@ -37,6 +37,16 @@
                     hx-include="#size-select"
             >
 
+                <td class="checkbox-column">
+                    <input type="checkbox" class="row-checkbox checkbox" value="2"
+                           hx-on-change="
+                             if (!this.checked) {
+                               htmx.find('#check-all').checked = false;
+                             }
+                       "
+                    >
+                </td>
+
                 <td>
                     <span class="text-2xl">${obj.getFileIcon()}</span>
                 </td>
@@ -57,6 +67,18 @@
             <tr
                     class="hover:bg-base-200 cursor-pointer"
             >
+
+                <td class="checkbox-column">
+                    <input type="checkbox"
+                           name="fileKey"
+                           class="row-checkbox checkbox"
+                           value="${obj.key}"
+                           hx-on-change="
+                            let count = htmx.findAll(htmx.closest(this, 'table'), '.row-checkbox:checked').length;
+                            htmx.find('#download-btn').disabled = (count !== 1);
+                            "
+                    >
+                </td>
 
                 <td>
                     <span class="text-2xl">${obj.getFileIcon()}</span>

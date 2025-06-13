@@ -17,6 +17,23 @@
     >
         <thead>
         <tr>
+            <th class="checkbox-column">
+                <input type="checkbox"
+                       class="checkbox"
+                       id="check-all"
+                       hx-on-change="
+                         let isChecked = event.target.checked;
+                         let table = htmx.closest(this, 'table');
+
+                         htmx.findAll(htmx.closest(this, 'table'), '.row-checkbox').forEach(function(el) {
+                           el.checked = isChecked;
+                         });
+
+                        let count = htmx.findAll(table, '.row-checkbox:checked').length;
+                        htmx.find('#download-btn').disabled = (count !== 1);
+                       "
+                >
+            </th>
             <th class="w-16">타입</th>
             <th>이름</th>
             <th class="w-32">크기</th>
@@ -24,12 +41,12 @@
         </tr>
         </thead>
         <tbody id="objects-tbody">
-            @template.components.s3.objectBody(
-            objects = objects,
-            continuationToken = continuationToken,
-            isLast = isLast,
-            currentPath = currentPath
-            )
+        @template.components.s3.objectBody(
+        objects = objects,
+        continuationToken = continuationToken,
+        isLast = isLast,
+        currentPath = currentPath
+        )
         </tbody>
     </table>
 </div>
