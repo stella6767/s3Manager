@@ -46,9 +46,12 @@ class S3ServiceTest(
 
     private val bucket = "qr-data-store"
 
-    private val client =
-        s3Service.createS3Client(accessKey, secretKey, region)
 
+    @Test
+    fun test(){
+
+        println(accessKey)
+    }
 
     @Test
     fun testConnection() {
@@ -64,12 +67,15 @@ class S3ServiceTest(
     @Test
     fun getObjectsBySize() {
 
+        val client =
+            s3Service.createS3Client(accessKey, secretKey, region)
+
         val s3Objects =
             s3Service.getObjectsBySize(client, bucket, "", 100, "")
 
-//        s3Objects.objects.forEach {
-//            println(it)
-//        }
+        s3Objects.objects.forEach {
+            println(it)
+        }
     }
 
     @Test

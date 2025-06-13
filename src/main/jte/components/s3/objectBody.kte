@@ -52,7 +52,7 @@
                 </td>
                 <td>
                     <div class="flex items-center gap-2">
-                        <span class="font-medium">${obj.name}</span>
+                        <span class="font-medium">${obj.key}</span>
                     </div>
                 </td>
                 <td>

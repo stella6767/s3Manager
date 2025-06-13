@@ -9,5 +9,5 @@
         hx-push-url="/s3/upload"
         hx-swap-oob="true"
 >
-    업로드 ${currentPath}
+    업로드
 </button>

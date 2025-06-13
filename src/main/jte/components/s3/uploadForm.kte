@@ -5,13 +5,21 @@
       class="max-w-7xl mx-auto py-4 px-10 md:p-8"
       hx-on--load="initUploadJS()"
 >
-    <div class="border-b pb-4 mb-6">
+    <div class="flex justify-between border-b pb-4 mb-6">
         <h1 class="text-2xl font-semibold">업로드</h1>
+
+        <button id="close-btn" class="btn hidden">
+            <a href="/s3/browser?prefix=${currentPath}">
+                닫기
+            </a>
+        </button>
+
     </div>
 
     @template.components.s3.uploadProgressView()
-    @template.components.s3.uploadCompleteView()
+    @template.components.s3.uploadCompleteView(bucket = bucket, currentPath = currentPath)
 
+    <input type="hidden" value="${currentPath}" name="currentPath"/>
 
     <div id="drop-zone"
          class="border-2 border-dashed rounded-lg p-8 text-center bg-base-200 hover:border-primary cursor-pointer transition-colors">
@@ -82,7 +90,16 @@
     </div>
 
     <div class="flex justify-end gap-4 mt-8 pt-4 border-t">
-        <button class="btn">취소</button>
+        <button id="cancel-btn"
+                class="btn"
+                <%--                hx-get="/s3/browser"--%>
+                <%--                hx-vals='{"prefix": ${currentPath}}'--%>
+                <%--                hx-target="#objects-container"--%>
+        >
+            <a href="/s3/browser?prefix=${currentPath}">
+                취소
+            </a>
+        </button>
         <button id="upload-btn" class="btn btn-primary" disabled>업로드</button>
     </div>
 

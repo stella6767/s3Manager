@@ -7,6 +7,7 @@ import freeapp.me.s3manager.repo.S3ObjectRepository
 import freeapp.me.s3manager.web.dto.*
 import jakarta.persistence.EntityNotFoundException
 import mu.KotlinLogging
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
