@@ -6,11 +6,10 @@ services:
       - "host.docker.internal:host-gateway"
     container_name: web-s3
     restart: always
-    #platform: linux/arm64/v8
-#      - linux/amd64
     build:
-      dockerfile: /home/ubuntu/cicd/s3/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "8082:8082" # NGINX가 8082로 프록시
+      - "8083:8083"
     environment:
       - "spring_profiles_active=prod"

@@ -30,15 +30,6 @@ data class InitialUploadReqDto(
     val contentType: String
 )
 
-data class PresignedUrlDto(
-    val url: String,
-)
-
-
-data class InitialUploadDto(
-    val uploadId: String,
-    val fileKey: String,
-)
 
 
 data class PresignedPartRequestDto(
@@ -84,9 +75,7 @@ data class S3UploadAbortDto(
     val filename: String
 )
 
-data class PresignedURLDto(
-    val url: String,
-)
+
 
 
 data class S3ConnectionRequestDto(

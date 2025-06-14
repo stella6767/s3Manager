@@ -3,7 +3,7 @@
 
 KEY_FILE="~/.ssh/gcp"
 TARGET_SERVER="freeapp1723@34.64.176.98"
-TARGET_PATH="/home/freeapp1723/cicd/b2b"
+TARGET_PATH="/home/freeapp1723/cicd/s3manager"
 
 echo "Building JAR file..."
 ./gradlew clean build
